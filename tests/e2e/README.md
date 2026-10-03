@@ -24,7 +24,8 @@ uv run pytest tests/e2e                # E2E scenarios
 
 | Variable | Required | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | yes | Read from `.env` in the working directory or the repo root (`ambrogio.config.load_env`). `.env` is gitignored: never commit or print the key. Scenarios that need Claude **fail**, never skip, when it is missing. |
+| `ANTHROPIC_API_KEY` | yes | Read from `.env` in the working directory, the repo root or, inside a git worktree, the main checkout (`ambrogio.config.load_env`, first match wins). An exported non-blank value wins over `.env`; a blank one is ignored. Blank values and the `.env.example` placeholder fail with a clear message. `.env` is gitignored: never commit or print the key. Scenarios that need Claude **fail**, never skip, when it is missing. |
+| `AMBROGIO_ROOT` | no | Repo root for data paths. Only needed with a non-editable install; otherwise the source tree (editable `uv sync`) or the working directory is used. |
 | `CLAUDE_MODEL` | no | Main model, default `claude-sonnet-5-5`. |
 | `CLAUDE_CHEAP_MODEL` | no | Cheap model for high-volume steps and the smoke scenario, default `claude-haiku-4-5-20251001`. |
 

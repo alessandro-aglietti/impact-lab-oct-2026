@@ -22,7 +22,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
-    return args.func(args)
+    func = getattr(args, "func", None)
+    if func is None:
+        parser.error(f"command '{args.command}' has no handler: its subparser must call set_defaults(func=...)")
+    return func(args)
 
 
 if __name__ == "__main__":

@@ -2,11 +2,9 @@
 
 Run all of them with the single entrypoint: `uv run pytest tests/e2e`.
 """
-import contextlib
 import functools
 import http.server
 import os
-import socket
 import subprocess
 import sys
 import threading
@@ -27,10 +25,11 @@ def repo_root() -> Path:
 @pytest.fixture(scope="session")
 def anthropic_api_key() -> str:
     """Fails (never skips) when the key is missing: E2E must call the real API."""
-    key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not key or key.startswith("sk-ant-..."):
-        pytest.fail("ANTHROPIC_API_KEY missing: put it in .env at the repo root (see tests/e2e/README.md).")
-    return key
+    key = os.getenv(config.KEY_VAR)
+    problem = config.api_key_problem(key)
+    if problem:
+        pytest.fail(f"{problem} Looked in: {', '.join(str(p) for p in config.env_files())} (see tests/e2e/README.md).")
+    return key.strip()
 
 
 @pytest.fixture(scope="session")
@@ -58,12 +57,6 @@ def run_cli(repo_root):
     return _run
 
 
-def free_port() -> int:
-    with contextlib.closing(socket.socket()) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
 @pytest.fixture
 def static_server():
     """Serve a directory over HTTP on a free port; yields a function dir -> base URL."""
@@ -71,7 +64,7 @@ def static_server():
 
     def _serve(directory: Path) -> str:
         handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(directory))
-        server = http.server.ThreadingHTTPServer(("127.0.0.1", free_port()), handler)
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)  # OS picks a free port, no TOCTOU
         threading.Thread(target=server.serve_forever, daemon=True).start()
         servers.append(server)
         return f"http://127.0.0.1:{server.server_address[1]}"
