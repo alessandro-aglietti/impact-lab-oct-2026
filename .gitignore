@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 starter/data/
 .DS_Store
+.pytest_cache/
+test-results/
+playwright-report/
+*.egg-info/
