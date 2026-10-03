@@ -1,0 +1,3 @@
+# I data plugin sono strumenti che Claude sceglie di interrogare
+
+Ambrogio non esegue una pipeline fissa (allerta × anziani soli × rischio caldo): ogni fonte è un data plugin esposto a Claude come strumento, e Claude decide quali interrogare a partire dagli obiettivi dei documenti di indirizzo e dai dati nuovi del flusso. Ogni plugin resta deterministico e restituisce solo dati aggregati per NIL, con fonte, periodo e data di aggiornamento; le join e i conteggi non passano mai da Claude. Abbiamo scelto così per generalizzare oltre il pilota caldo × anziani (nuove fonti = nuovi plugin, non nuove pipeline) e perché il ragionamento su quali dati incrociare è il lavoro che vogliamo da Claude a runtime, accettando in cambio esiti meno prevedibili di una join fissa.
