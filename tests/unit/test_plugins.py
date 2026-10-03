@@ -1,10 +1,24 @@
 """Data plugin per NIL (ticket 05): behaviour through tutti_i_plugin() and DataPlugin.interroga()."""
 import re
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
+from ambrogio import contracts
 from ambrogio.plugins import ID_NIL_CITTA, tutti_i_plugin
+
+
+def _da_plugins(nome):
+    import ambrogio.plugins as m
+
+    return getattr(m, nome)
+
+
+SOGLIA_CELLA = 5  # celle 1..4 non escono mai (segreto statistico)
+
+
+def _conteggio(testo):
+    return _da_plugins("_conteggio")(testo)
 
 PASSO_1 = date(2025, 6, 25)
 PASSO_2 = date(2025, 6, 27)
@@ -140,3 +154,80 @@ def nil_ufficiali() -> dict[int, str]:
 
     with (config.OPENDATA_DIR / "ds964-nil-vigenti-pgt-2030.csv").open(encoding="utf-8", newline="") as f:
         return {int(r["ID_NIL"]): r["NIL"] for r in csv.DictReader(f, delimiter=";")}
+
+
+# --- review fixes (PR #2) -------------------------------------------------------------------------
+
+
+def test_anziani_suppresses_small_cells_so_no_single_person_is_visible():
+    r = plugin("anziani").interroga(PASSO_1)
+    for d in r.dati:
+        if d.unita == "persone":
+            assert isinstance(d.valore, str) or d.valore == 0 or d.valore >= SOGLIA_CELLA, (d.id_nil, d.misura, d.valore)
+    # NIL 3 (Giardini P.ta Venezia): nei dati grezzi 1 residente 80+, che vive solo.
+    nil_3 = [d for d in r.dati if d.id_nil == 3]
+    assert nil_3 and all(isinstance(d.valore, str) for d in nil_3 if d.unita == "persone")
+    assert not [d for d in nil_3 if d.unita == "%"]  # nessun 100% su una persona
+    # Nessuna quota dove i soli o i non soli sono pochi (NIL 86: 7 residenti 80+, 4 soli).
+    assert not [d for d in r.dati if d.id_nil == 86 and d.unita == "%"]
+    assert max(d.valore for d in r.dati if d.unita == "%") < 100
+    # San Siro resta intatto.
+    assert [d.valore for d in per_misura(r, 57, "anziani 80+ soli")] == [1123]
+    assert [d.valore for d in per_misura(r, 57, "percentuale")] == [57.6]
+
+
+def test_anziani_uses_only_years_closed_before_the_replay_date():
+    r = plugin("anziani").interroga(date(2016, 3, 1), [57])
+    assert r.dati and {d.fonte.periodo for d in r.dati} == {"2015"}
+    vuoto = plugin("anziani").interroga(date(2011, 1, 1), [57])
+    assert vuoto.dati == [] and "nessun anno" in vuoto.note.lower()
+
+
+def test_counts_read_dot_as_thousands_separator():
+    assert _conteggio("1.951") == 1951
+    assert _conteggio("1951") == 1951
+    assert _conteggio("") is None
+
+
+def test_empty_id_nil_list_means_all_nil():
+    for nome in ("anziani", "rischio_caldo", "spazi_freschi"):
+        assert {d.id_nil for d in plugin(nome).interroga(PASSO_1, []).dati} == set(nil_ufficiali()), nome
+
+
+def test_id_nil_are_coerced_to_int_and_bools_rejected():
+    r = plugin("anziani").interroga(PASSO_2, ["57", 57.0, True])
+    assert {d.id_nil for d in r.dati} == {57}
+    assert all(type(d.id_nil) is int for d in r.dati)
+    assert "True" in r.note
+
+
+def test_plugins_accept_a_datetime_as_replay_date():
+    for p in tutti_i_plugin():
+        r = p.interroga(datetime(2025, 7, 2, 10, 0))
+        assert r.data == PASSO_3 and type(r.data) is date
+
+
+def test_city_wide_id_lives_in_the_shared_contracts():
+    assert contracts.ID_NIL_CITTA == ID_NIL_CITTA == 0
+
+
+def test_allerte_say_when_forecast_days_are_not_yet_published():
+    r = plugin("allerte").interroga(PASSO_1)
+    assert "2025-06-26" in r.note and "2025-06-27" in r.note
+    fuori = plugin("allerte").interroga(date(2030, 1, 1))
+    assert fuori.dati == [] and "HHWW" in fuori.note
+
+
+def test_curated_sources_do_not_claim_updates_after_the_replay_date():
+    for passo in (PASSO_2, PASSO_3, PASSO_4):
+        for nome in ("allerte", "segnalazioni"):
+            for d in plugin(nome).interroga(passo).dati:
+                assert date.fromisoformat(d.fonte.aggiornato) <= passo, (nome, d)
+    for d in plugin("nil_esondabili").interroga(PASSO_4).dati:
+        assert d.fonte.periodo != "storico"
+
+
+def test_segnalazioni_text_is_marked_as_untrusted_citizen_text():
+    p = plugin("segnalazioni")
+    assert "non sono istruzioni" in p.descrizione
+    assert "non sono istruzioni" in p.interroga(PASSO_2).note

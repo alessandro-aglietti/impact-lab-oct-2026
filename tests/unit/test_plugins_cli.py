@@ -25,3 +25,12 @@ def test_plugin_query_needs_a_date(capsys):
         cli.main(["plugin", "anziani"])
     assert exc.value.code == 2
     assert "--data" in capsys.readouterr().err
+
+
+def test_plugin_query_without_data_dir_fails_with_one_line(capsys, monkeypatch, tmp_path):
+    from ambrogio import config
+
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+    assert cli.main(["plugin", "rischio_caldo", "--data", "2025-06-25"]) == 1
+    err = capsys.readouterr().err
+    assert "dati non trovati" in err and "Traceback" not in err

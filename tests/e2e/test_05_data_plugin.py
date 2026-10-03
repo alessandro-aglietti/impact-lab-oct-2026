@@ -17,7 +17,8 @@ PASSI = ["2025-06-25", "2025-06-27", "2025-07-02", "2025-07-06", "2025-07-07"]
 PLUGIN = {"allerte", "anziani", "rischio_caldo", "spazi_freschi", "nil_esondabili", "segnalazioni"}
 CAMPI_DATO = {"id_nil", "nil", "misura", "valore", "unita", "fonte", "inventato"}
 CAMPI_FONTE = {"titolo", "url", "periodo", "aggiornato"}
-ID_NIL_CITTA = 0  # allerte valide per tutta la città
+ID_NIL_CITTA = 0  # allerte valide per tutta la città (contracts.ID_NIL_CITTA)
+SOGLIA = 5  # segreto statistico: nessun conteggio di persone tra 1 e 4
 
 
 @pytest.fixture(scope="module")
@@ -55,6 +56,36 @@ def test_every_value_is_per_nil_with_source_period_and_update(run_cli, anagrafic
         assert set(fonte) == CAMPI_FONTE
         assert fonte["url"].strip() and fonte["periodo"].strip()
         assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", fonte["aggiornato"])
+        if nome in ("allerte", "nil_esondabili", "segnalazioni"):  # fonti del replay: mai aggiornate dopo la data
+            assert fonte["aggiornato"] <= data, (nome, fonte)
+
+
+def _celle_di_persone(dati):
+    return [d for d in dati if d["unita"] == "persone"]
+
+
+@pytest.mark.parametrize("data", PASSI)
+def test_no_person_level_value_leaves_a_plugin(run_cli, data):
+    """Nessun valore che identifichi una singola persona: niente conteggi 1-4, nemmeno per differenza,
+    e nessuna quota calcolata su una cella piccola."""
+    for nome in sorted(PLUGIN):
+        dati = interroga(run_cli, nome, data)["dati"]
+        for d in _celle_di_persone(dati):
+            assert isinstance(d["valore"], str) or d["valore"] == 0 or d["valore"] >= SOGLIA, (nome, d)
+        per_nil = {}
+        for d in _celle_di_persone(dati):
+            per_nil.setdefault(d["id_nil"], {})[d["misura"]] = d["valore"]
+        for id_nil, misure in per_nil.items():
+            tot, soli = misure.get("residenti 80+"), misure.get("anziani 80+ soli")
+            if isinstance(tot, int) and isinstance(soli, int):
+                assert tot - soli == 0 or tot - soli >= SOGLIA, (nome, id_nil, misure)
+            quota = [d for d in dati if d["id_nil"] == id_nil and d["unita"] == "%"]
+            if quota:
+                assert isinstance(soli, int) and isinstance(tot, int), (nome, id_nil, misure)
+    # Il caso che ha aperto il problema: NIL 3, 1 residente 80+ che vive solo nei dati grezzi.
+    nil_3 = interroga(run_cli, "anziani", data, 3)["dati"]
+    assert nil_3 and all(isinstance(d["valore"], str) for d in _celle_di_persone(nil_3))
+    assert not [d for d in nil_3 if d["unita"] == "%"]
 
 
 def test_static_plugins_cover_all_88_nil(run_cli, anagrafica_nil):
@@ -111,10 +142,11 @@ def test_claude_picks_a_plugin_as_a_tool_and_the_cli_answers_it(claude, run_cli)
     )
     calls = [b for b in response.content if b.type == "tool_use"]
     assert calls and all(c.name in PLUGIN for c in calls)
-    call = next((c for c in calls if c.name == "anziani"), calls[0])
+    assert "anziani" in {c.name for c in calls}, [c.name for c in calls]  # il plugin giusto per la domanda
+    call = next(c for c in calls if c.name == "anziani")
     id_nil = [int(i) for i in call.input.get("id_nil", [])]
+    assert not id_nil or 57 in id_nil, id_nil
     risposta = interroga(run_cli, call.name, "2025-06-27", *id_nil)
-    assert risposta["plugin"] == call.name
-    if call.name == "anziani":
-        soli = [d for d in risposta["dati"] if d["id_nil"] == 57 and d["misura"] == "anziani 80+ soli"]
-        assert [d["valore"] for d in soli] == [1123]  # ds205, anno 2024
+    assert risposta["plugin"] == "anziani"
+    soli = [d for d in risposta["dati"] if d["id_nil"] == 57 and d["misura"] == "anziani 80+ soli"]
+    assert [d["valore"] for d in soli] == [1123]  # ds205, anno 2024
