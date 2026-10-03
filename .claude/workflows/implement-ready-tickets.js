@@ -23,11 +23,16 @@ const ATTRIB = A.sessionUrl
   ? `End every commit message with the line "Claude-Session: ${A.sessionUrl}" and every PR body with the line "${A.sessionUrl}".`
   : ''
 const ISSUES = `.scratch/${FEATURE}/issues`
-const ENV_FILE = A.envFile || '.env'
+// Kept OUTSIDE the repo and read-only: agents must never be able to clobber the only copy of the key.
+const ENV_FILE = A.envFile || '/Users/gawaine/.config/impact-lab/anthropic.env'
+// Existing PRs to pick up instead of re-implementing, e.g. {"00": {"number": 1, "branch": "ticket/00-bootstrap"}}.
+const EXISTING_PRS = A.prs || {}
 
 // Shared rules every agent working on code gets.
 const GIT_RULES = `
-Git rules (you run in your own isolated git worktree; other agents work in parallel in other worktrees):
+Filesystem and git rules (you run in your own isolated git worktree; other agents work in parallel in other worktrees):
+- Never create, modify, move or delete anything outside your worktree, except fresh directories under your scratchpad. ${ENV_FILE} and the main checkout the worktrees hang off are read-only to you.
+- Every shell command that changes directory must stop if the cd fails (\`cd X || exit 1\`), and any write or delete after a cd uses an absolute path. A failed cd followed by a relative \`rm .env\` already destroyed the user's API key once.
 - Always \`git fetch origin\` first. Never commit to or push main directly. Never force-push anything but your own ticket branch, and only with --force-with-lease.
 - To work on an existing PR branch B: \`git switch --detach origin/B\`, commit, then \`git push origin HEAD:B\` (detached avoids "branch already checked out in another worktree").
 - Use \`gh\` for every PR operation. You cannot approve your own PR: post reviews with \`gh pr review --comment\` and line comments via \`gh api\`.
@@ -35,7 +40,7 @@ ${ATTRIB}`
 
 const E2E_RULES = `
 End-to-end testing is mandatory, not optional:
-- ANTHROPIC_API_KEY lives in ${ENV_FILE} (gitignored, so absent from your worktree). Code loads it from a .env in the working dir: run \`cp ${ENV_FILE} .env\` in your worktree before running anything. Never print, log or commit the key.
+- ANTHROPIC_API_KEY lives in ${ENV_FILE} (read-only, outside the repo). Copy it to your worktree before running anything: \`cp ${ENV_FILE} "$(git rev-parse --show-toplevel)/.env"\`. Never edit, move or delete ${ENV_FILE}. Never print, log or commit the key.
 - The repo has ONE documented E2E entrypoint (see tests/e2e/README.md, created by the bootstrap step). Every ticket adds its own scenario under tests/e2e/ and the entrypoint runs them all.
 - An E2E scenario exercises the deliverable through its real entrypoint (CLI, script, HTTP server, web page via Playwright) on the real versioned data, from a clean state. No mocks of our own code. Where the ticket makes Claude do work at runtime, the E2E calls the real Claude API and asserts on the structured output's shape and invariants, not on exact wording.
 - If something needed for E2E is missing (API key, network for a one-off download, a browser), say so explicitly in your result with e2e.passed=false and the reason. Never claim E2E passed without having run it and seen the output.`
@@ -145,7 +150,7 @@ const scan = await agent(
   `Read every file in ${ISSUES}/ on origin/main (run \`git fetch origin\` and use \`git show origin/main:<path>\`; fall back to the working tree if the folder is not on origin yet, and say so in the title field).
 For each ticket return id (NN prefix), path, title (first heading), status (the "Status:" line value) and blockedBy (ids from the "Blocked by:" line, [] if none).
 Also report whether origin/main has tests/e2e/README.md describing a single E2E entrypoint.`,
-  { label: 'scan tickets', phase: 'Scan', schema: TICKETS_SCHEMA, effort: 'low' },
+  { label: 'scan tickets', phase: 'Scan', schema: TICKETS_SCHEMA, effort: 'low', isolation: 'worktree' },
 )
 
 const all = scan.tickets
@@ -176,9 +181,13 @@ function withMergeLock(fn) {
 async function deliver(t, implementPrompt) {
   const tag = t.id
   phase('Implement')
-  const impl = await agent(implementPrompt, {
-    label: `implement ${tag}`, phase: 'Implement', schema: IMPL_SCHEMA, isolation: 'worktree',
-  })
+  const existing = EXISTING_PRS[tag]
+  if (existing) log(`${tag}: picking up existing PR #${existing.number} (${existing.branch})`)
+  const impl = existing
+    ? { branch: existing.branch, prNumber: existing.number, prUrl: `PR #${existing.number}`, e2e: null, blocked: '' }
+    : await agent(implementPrompt, {
+      label: `implement ${tag}`, phase: 'Implement', schema: IMPL_SCHEMA, isolation: 'worktree',
+    })
   if (!impl) return { id: tag, merged: false, reason: 'implementer died or was skipped' }
   if (impl.blocked) {
     log(`${tag} blocked: ${impl.blocked}`)
@@ -218,7 +227,7 @@ Every finding needs the command and the real output. Set e2eRan=true only if you
       agent(`${l.prompt}
 ${GIT_RULES}
 Post your findings on the PR as one review: \`gh pr review ${impl.prNumber} --comment --body ...\` (title it "Adversarial review round ${round}: ${l.key}"), with file:line references. Mark each finding blocking (wrong behaviour, unmet criterion, rule violation, failing test/E2E) or minor (style, naming, small cleanups).`,
-      { label: `review ${tag} r${round} ${l.key}`, phase: 'Review', schema: REVIEW_SCHEMA })))
+      { label: `review ${tag} r${round} ${l.key}`, phase: 'Review', schema: REVIEW_SCHEMA, isolation: 'worktree' })))
 
     const findings = reviews.filter(Boolean).flatMap(r => r.findings)
     if (!reviews.filter(Boolean).some(r => r.e2eRan)) log(`${tag} r${round}: no reviewer managed to run E2E`)
