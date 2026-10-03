@@ -21,11 +21,13 @@ def _norm(t: str) -> str:
 
 
 def _testo_documento(url: str) -> str:
-    if "ats-milano" in url:
-        if not shutil.which("pdftotext"):
-            pytest.skip("pdftotext not installed")
-        out = subprocess.run(["pdftotext", str(FILES / "piano-caldo-2026-ats-milano.pdf"), "-"], capture_output=True, text=True, check=True)
-        return _norm(out.stdout)
+    pdf = {"ats-milano": "piano-caldo-2026-ats-milano.pdf", "Piano+di+Sviluppo+del+Welfare": "piano-sviluppo-welfare-2025-2027.pdf"}
+    for chiave, file in pdf.items():
+        if chiave in url:
+            if not shutil.which("pdftotext"):
+                pytest.skip("pdftotext not installed")
+            out = subprocess.run(["pdftotext", str(FILES / file), "-"], capture_output=True, text=True, check=True)
+            return _norm(out.stdout)
     raw = (FILES / "milano-aiuta-estate-2026.html").read_text(encoding="utf-8")
     raw = re.sub(r"<script.*?</script>|<style.*?</style>", "", raw, flags=re.S)
     return _norm(html.unescape(re.sub(r"<[^>]+>", " ", raw)))
@@ -66,9 +68,26 @@ def test_anziani_and_rischio_cover_every_nil_and_filter():
     assert {d.id_nil for d in rc} == {57}
 
 
+def test_nil_names_come_from_the_official_registry_without_mojibake():
+    anz = {d.id_nil: d.nil for d in P["anziani"].interroga(PASSI[0].data, [14]).dati}
+    assert anz[14] == "NIGUARDA - CA' GRANDA - PRATO CENTENARO - Q.RE FULVIO TESTI"
+    assert not [d.nil for d in P["anziani"].interroga(PASSI[0].data).dati if "?" in d.nil]
+
+
+def test_opendata_sources_carry_the_iso_update_date_of_the_manifest():
+    (a,) = {d.fonte for d in P["anziani"].interroga(PASSI[0].data).dati}
+    (r,) = {d.fonte for d in P["rischio_caldo"].interroga(PASSI[0].data).dati}
+    assert a.aggiornato == "2026-09-14" and r.aggiornato == "2024-09-10"
+
+
+def test_registro_has_a_welfare_plan_obiettivo():
+    assert any("Welfare" in o.documento for o in OBIETTIVI_FIXTURE)
+    assert RegistroFixture().cerca("solitudine anziani fragilità")
+
+
 def test_registro_answers_by_tema():
     reg = RegistroFixture()
     for tema in ("solitudine anziani", "luoghi freschi", "accessibilità trasporto", "allagamento"):
         assert reg.cerca(tema), tema
-    assert reg.cerca("solitudine anziani", limite=2)[0].id in {"caldo-finalita", "aiuta-spazi-freschi", "caldo-rete-territoriale"}
+    assert reg.cerca("solitudine anziani", limite=2)[0].id in {"caldo-finalita", "aiuta-spazi-freschi", "caldo-rete-territoriale", "welfare-solitudine-fascia-grigia"}
     assert reg.cerca("zzzz") == []

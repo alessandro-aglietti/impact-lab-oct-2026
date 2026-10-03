@@ -8,6 +8,7 @@ Segnalazioni plugin exposes only date, NIL, text and category: never the curated
 from __future__ import annotations
 
 import csv
+import json
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -24,6 +25,20 @@ def _csv(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
         return list(csv.DictReader(f, delimiter=delimiter))
 
 
+def _aggiornato(opendata: Path, file: str) -> str:
+    """ISO update date of an open-data file, from data/opendata/manifest.jsonl."""
+    for line in (opendata / "manifest.jsonl").read_text(encoding="utf-8").splitlines():
+        voce = json.loads(line)
+        if voce["file"] == file:
+            return voce["aggiornato"][:10]
+    raise KeyError(file)
+
+
+def _nomi_nil(opendata: Path) -> dict[int, str]:
+    """Official NIL names (ds964), e.g. for ds205, whose CSV has "CA? GRANDA"."""
+    return {int(r["ID_NIL"]): r["NIL"] for r in _csv(opendata / "ds964-nil-vigenti-pgt-2030.csv", ";")}
+
+
 def _filtra(dati: list[DatoNil], id_nil: list[int] | None) -> list[DatoNil]:
     if not id_nil:
         return dati
@@ -38,7 +53,7 @@ class _Base:
 
 
 class Allerte(_Base):
-    """HHWW Milano (onData) as forecast on the step date + Protezione Civile alerts active or starting tomorrow."""
+    """HHWW Milano (onData) as forecast on the step date + Protezione Civile Allerte active or starting tomorrow."""
 
     def __init__(self, opendata: Path, curati: Path):
         super().__init__(
@@ -85,19 +100,22 @@ class Anziani(_Base):
             "Anziani per NIL (anagrafe, ds205, anno più recente): residenti 80+ e residenti 80+ che vivono soli. "
             "Conteggi aggregati, mai persone.",
         )
-        righe = _csv(opendata / "ds205-sociale-caratteristiche-demografiche-territoriali-quartiere.csv", ";")
+        file = "ds205-sociale-caratteristiche-demografiche-territoriali-quartiere.csv"
+        righe = _csv(opendata / file, ";")
         anno = max(r["Anno"] for r in righe)
         fonte = Fonte(
             "Caratteristiche demografiche per quartiere (ds205)",
             "https://dati.comune.milano.it/dataset/ds205",
             anno,
-            anno,
+            _aggiornato(opendata, file),
         )
+        nomi = _nomi_nil(opendata)
         self._dati = []
         for r in righe:
             if r["Anno"] != anno or not r["NIL"].strip().isdigit():  # skips the "N.D." row
                 continue
-            nil, nome = int(r["NIL"]), r["Quartiere"].upper()
+            nil = int(r["NIL"])
+            nome = nomi.get(nil, r["Quartiere"].upper())
             self._dati.append(DatoNil(nil, nome, "anziani 80+ soli", int(r["80 e + soli fam registrate in anagrafe"]), "persone", fonte))
             self._dati.append(DatoNil(nil, nome, "anziani 80+", int(r["80 e +"]), "persone", fonte))
 
@@ -114,12 +132,13 @@ class RischioCaldo(_Base):
             "Rischio ondata di calore urbano per NIL (ds2812, snapshot luglio 2024): indice medio 0-1 e posizione "
             "in classifica (1 = NIL più a rischio su 88).",
         )
-        righe = _csv(opendata / "ds2812-rischio-ondata-calore-urbano-nil-07-2024.csv", ";")
+        file = "ds2812-rischio-ondata-calore-urbano-nil-07-2024.csv"
+        righe = _csv(opendata / file, ";")
         fonte = Fonte(
             "Rischio ondata di calore urbano per NIL (ds2812)",
             "https://dati.comune.milano.it/dataset/ds2812",
             "luglio 2024",
-            "2024-07",
+            _aggiornato(opendata, file),
         )
         ordinate = sorted(righe, key=lambda r: -float(r["value"]))
         self._dati = []
@@ -186,6 +205,12 @@ _CALDO = dict(
     validita="2026",
     url="https://www.ats-milano.it/sites/default/files/comunicati-stampa/2026/06/Piano%20Caldo%202026%20ATS%20Milano.pdf",
 )
+_WELFARE = dict(
+    documento="Piano di Sviluppo del Welfare 2025-2027",
+    ente="Comune di Milano",
+    validita="2025-2027",
+    url="https://www.comune.milano.it/documents/20118/473420/Piano+di+Sviluppo+del+Welfare+2025-2027.pdf/c638cf95-9804-c114-6a56-ff4d5c2b435d?version=2.0&t=1764777436151&download=true",
+)
 _AIUTA = dict(
     documento="Milano Aiuta Estate 2026 (comunicato del Comune di Milano, 23 giugno 2026)",
     ente="Comune di Milano",
@@ -193,7 +218,8 @@ _AIUTA = dict(
     url="https://www.comune.milano.it/w/welfare.-riparte-milano-aiuta-estate-attivit%C3%A0-ricreative-spazi-freschi-e-monitoraggio-per-anziani-e-fragili",
 )
 
-# Citations are verbatim from data/documenti/files/ (pdftotext of the Piano Caldo; text of the Milano Aiuta page).
+# Citations are verbatim from data/documenti/files/ (pdftotext of the Piano Caldo and the Piano Welfare; text of the
+# Milano Aiuta page). The PUMS is only indexed, not versioned (data/documenti/manifest.jsonl): no verbatim citation.
 OBIETTIVI_FIXTURE: list[Obiettivo] = [
     Obiettivo(
         id="caldo-finalita",
@@ -229,6 +255,16 @@ OBIETTIVI_FIXTURE: list[Obiettivo] = [
         pagina="p. 7-8, sez. 4 Sistema di allerta e monitoraggio",
         temi=["luoghi freschi", "spazi freschi", "condizionamento", "acqua", "fontanelle", "strutture"],
         **_CALDO,
+    ),
+    Obiettivo(
+        id="welfare-solitudine-fascia-grigia",
+        testo="Contrastare la solitudine degli anziani e intercettare con anticipo le fragilità della fascia grigia",
+        citazione="Prevenire condizioni di disagio che colpiscono soprattutto la popolazione anziana (ma non solo) in "
+        "termini di contrasto della solitudine e mantenimento dell’autonomia; intercettare con anticipo le situazioni "
+        "di fragilità e la cosiddetta “fascia grigia”",
+        pagina="p. 37 del PDF, co-progettazione Case di Quartiere",
+        temi=["anziani", "solitudine", "fragilità", "fascia grigia", "prevenzione", "case di quartiere"],
+        **_WELFARE,
     ),
     Obiettivo(
         id="aiuta-020202",

@@ -15,6 +15,7 @@ from ambrogio.fixtures import OBIETTIVI_FIXTURE, RegistroFixture, plugin_fixture
 
 ESONDABILI = {14, 11, 12, 13, 31, 23}
 LIVELLI = {"alta", "media", "bassa"}
+RANGO = {"bassa": 0, "media": 1, "alta": 2}
 
 
 @pytest.fixture(scope="module")
@@ -110,7 +111,8 @@ def test_step1_first_signals_on_heat_and_anziani_soli(replay):
     assert any(
         _fonte(s, "Bollettino ondate di calore") and any("anziani" in e.fonte.titolo.lower() or "ds205" in e.fonte.url for e in s.evidenze)
         for s in segnali
-    ), "a step-1 Segnale must combine the heat alert with the anziani data"
+    ), "a step-1 Segnale must combine the heat Allerta with the anziani data"
+    assert any(_fonte(s, "Rischio ondata di calore") for s in segnali), "step 1 must use the NIL heat-risk data (ds2812)"
 
 
 def test_step2_uses_relevant_segnalazioni_and_ignores_the_unrelated_one(replay):
@@ -122,17 +124,31 @@ def test_step2_uses_relevant_segnalazioni_and_ignores_the_unrelated_one(replay):
     assert 26 in ignorate, "the unrelated Segnalazione must be explicitly ignored with a reason"
 
 
-def test_step3_combines_heat_and_storm_alert(replay):
+def test_step2_raises_the_priority_of_some_nil(replay):
+    def rango(n):
+        out = {}
+        for s in replay["segnali"][n]:
+            for nil in s.nil:
+                out[nil] = max(out.get(nil, -1), RANGO[s.priorita])
+        return out
+
+    prima, dopo = rango(1), rango(2)
+    saliti = [nil for nil, r in dopo.items() if r > prima.get(nil, -1)]
+    assert saliti, f"no NIL rose in priority at step 2 (step 1: {prima}, step 2: {dopo})"
+
+
+def test_step3_combines_heat_and_storm_allerta(replay):
     assert any(
         _fonte(s, "Bollettino ondate di calore") and _fonte(s, "Allerta Protezione Civile")
         for s in replay["segnali"][3]
-    ), "step 3 must produce a Segnale combining HHWW level 3 and the yellow storm alert"
+    ), "step 3 must produce a Segnale combining HHWW level 3 and the yellow storm Allerta"
 
 
 def test_step4_switches_to_flood_prone_nil_with_low_confidence(replay):
     flood = [s for s in replay["segnali"][4] if set(s.nil) & ESONDABILI and _fonte(s, "NIL esondabili")]
     assert flood, "step 4 must raise a Segnale on flood-prone NIL"
     assert all(s.confidenza == "bassa" for s in flood), "the editorial flood list caps confidence at bassa"
+    assert any(_fonte(s, "Allerta Protezione Civile") for s in flood), "the flood Segnale must rest on the orange storm Allerta"
 
 
 def test_step5_respects_the_discarded_segnale(replay):
