@@ -9,7 +9,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from ambrogio import __version__
+from ambrogio import __version__, plugins
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,6 +17,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"ambrogio {__version__}")
     commands = parser.add_subparsers(dest="command", metavar="<command>")
     _add_obiettivi(commands)
+    plugins.aggiungi_comando(commands)  # ticket 05
+    serve = commands.add_parser("serve", help="API del replay e portale del Decisore su http://HOST:PORT")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--replay", choices=["auto", "ambrogio", "demo"], default="auto",
+                       help="ambrogio: Claude reale (ambrogio.cablaggio); demo: Segnali fissi; auto: ambrogio se disponibile")
+    serve.set_defaults(func=_serve)
     return parser
 
 
@@ -83,6 +90,19 @@ def _obiettivi_indice(args) -> int:
     from ambrogio import registro
 
     print(json.dumps(registro.RegistroJsonl.indice(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _serve(args: argparse.Namespace) -> int:
+    from ambrogio.server import crea_replay, serve
+
+    replay, modo = crea_replay(args.replay)
+    server = serve(args.host, args.port, replay)
+    print(f"Ambrogio su http://{args.host}:{args.port}  (replay: {modo}; API su /api/, Ctrl-C per fermare)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
     return 0
 
 

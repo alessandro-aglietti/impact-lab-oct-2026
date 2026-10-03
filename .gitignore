@@ -8,3 +8,4 @@ starter/data/
 test-results/
 playwright-report/
 *.egg-info/
+.claude/worktrees/

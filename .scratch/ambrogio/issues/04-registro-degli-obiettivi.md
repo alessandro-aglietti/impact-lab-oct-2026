@@ -1,6 +1,6 @@
 # Ingestione dei documenti di indirizzo nel registro degli Obiettivi
 
-Status: ready-for-agent
+Status: done
 
 Claude legge ogni documento ed estrae gli Obiettivi (impegno o misura, citazione testuale, pagina o sezione, ente, periodo di validità, temi) in un registro interrogabile da Ambrogio come strumento (ADR 0002).
 
@@ -21,3 +21,7 @@ Blocked by: 01
 ## Taglio per le 16:00
 
 Implementa `RegistroObiettivi` di `src/ambrogio/contracts.py`. Non cablare in Ambrogio: lo fa il ticket 09.
+
+## Comments
+
+- PR https://github.com/alessandro-aglietti/impact-lab-oct-2026/pull/3: Claude estrae Obiettivi (con citazione testuale e pagina) e servizi esistenti dai documenti di indirizzo versionati in un registro JSONL interrogabile per tema (`ambrogio obiettivi estrai|cerca|servizi|indice`), che implementa `RegistroObiettivi`.
