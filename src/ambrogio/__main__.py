@@ -17,15 +17,18 @@ def build_parser() -> argparse.ArgumentParser:
     serve = commands.add_parser("serve", help="API del replay e portale del Decisore su http://HOST:PORT")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--replay", choices=["auto", "ambrogio", "demo"], default="auto",
+                       help="ambrogio: Claude reale (ambrogio.cablaggio); demo: Segnali fissi; auto: ambrogio se disponibile")
     serve.set_defaults(func=_serve)
     return parser
 
 
 def _serve(args: argparse.Namespace) -> int:
-    from ambrogio.server import serve
+    from ambrogio.server import crea_replay, serve
 
-    server = serve(args.host, args.port)
-    print(f"Ambrogio su http://{args.host}:{args.port}  (API su /api/, Ctrl-C per fermare)")
+    replay, modo = crea_replay(args.replay)
+    server = serve(args.host, args.port, replay)
+    print(f"Ambrogio su http://{args.host}:{args.port}  (replay: {modo}; API su /api/, Ctrl-C per fermare)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

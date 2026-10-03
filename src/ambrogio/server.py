@@ -142,6 +142,24 @@ def crea_handler(servizio: ServizioReplay) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+def crea_replay(modo: str = "auto") -> tuple[Replay, str]:
+    """Sceglie il Replay. Il ticket 09 fornisce `ambrogio.cablaggio.crea_replay() -> Replay` (Ambrogio su Claude)."""
+    if modo in ("auto", "ambrogio"):
+        try:
+            from ambrogio import cablaggio
+            from ambrogio.config import load_env
+
+            load_env()
+            return cablaggio.crea_replay(), "ambrogio"
+        except Exception as e:  # noqa: BLE001
+            if modo == "ambrogio":
+                raise SystemExit(f"replay ambrogio non disponibile: {e}") from e
+            print(f"replay ambrogio non disponibile ({e}): uso il replay demo")
+    from ambrogio.demo_replay import DemoReplay
+
+    return DemoReplay(), "demo"
+
+
 def serve(host: str = "127.0.0.1", port: int = 8000, replay: Replay | None = None) -> ThreadingHTTPServer:
     if replay is None:
         from ambrogio.demo_replay import DemoReplay
