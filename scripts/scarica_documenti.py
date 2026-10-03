@@ -39,6 +39,17 @@ DOCUMENTI = [
     ("", "Food Policy - Linee di indirizzo", "Comune di Milano", 2015,
      "https://www.comune.milano.it/documents/20118/834126/Linee+di+indirizzo_Food+Policy.pdf/0edc073b-ce54-f65f-b0df-03f15e397999?version=1.0&t=1753192611183&download=true",
      False, "indice"),
+    ("consegna-pasti-a-domicilio.html",
+     "Milano Aiuta - Servizio consegna pasti a domicilio (Contact Center 02.02.02)", "Comune di Milano", 2026,
+     "https://servizicrm.comune.milano.it/centro-supporto/KA-02878/Servizio-consegna-pasti-a-domicilio",
+     True, "servizio esistente"),
+    ("", "DUP 2026-2028 - Documento Unico di Programmazione e Bilancio di previsione, DCC 115/2025",
+     "Comune di Milano", 2025,
+     "https://www.comune.milano.it/documents/20118/5500233/00+-+Delibera+Bilancio+2026-2028.pdf/5ed4f4dc-7c23-5a16-4b03-5536698fe3b3?version=1.0&t=1768816987921&download=true",
+     False, "indice"),
+    ("", "PGT Milano 2030 vigente - Documento di Piano e Piano dei Servizi", "Comune di Milano", 2019,
+     "https://pgt.comune.milano.it/pgt-milano2030",
+     False, "indice"),
 ]
 
 

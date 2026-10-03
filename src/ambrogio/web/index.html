@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ambrogio – Portale del Decisore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F4EF;--panel:#FFFFFF;--ink:#1A1D21;--muted:#4A5260;--line:#D9D6CC;--soft:#ECEAE3;--accent:#1F4E8C;--accent-dark:#0E2A50;--accent-soft:#9DB4D3;--accent-bg:#EEF2F8;--none:#CFCBC0;--alta:#8A2B0E;--media:#F2C48D;--media-ink:#3D2406;--bassa:#E3E7EE;--bassa-ink:#26303D;--serif:'Source Serif 4',Georgia,serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Source Sans 3',system-ui,sans-serif;font-size:16px;line-height:1.45}
+a{color:var(--accent)}a:hover{color:#123462}
+button{font:inherit;cursor:pointer}
+header{background:var(--ink);color:var(--bg);padding:16px 32px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+header .brand{font-family:var(--serif);font-size:26px;font-weight:700}
+header .sub{font-size:14px;color:#C9CCD2}
+.replay{background:var(--panel);border-bottom:1px solid var(--line);padding:16px 32px;display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.replay .lbl{font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;flex:1 1 480px}
+.steps li{display:flex;flex-direction:column;padding:6px 12px;border-radius:6px;min-width:120px;background:var(--bg);color:var(--muted);border:1px dashed #B5B1A6;font-size:13px}
+.steps li b{font-size:15px}
+.steps li.done{background:#DCE4F0;color:var(--ink);border:1px solid #DCE4F0}
+.steps li.cur{background:var(--accent);color:#fff;border:1px solid var(--accent)}
+.btn{min-height:48px;padding:0 20px;border-radius:6px;font-weight:700;font-size:15px;border:none}
+.btn-dark{background:var(--ink);color:#fff}
+.btn-dark:disabled{background:var(--none);color:#3A414C;cursor:default}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-outline{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.btn-light{min-height:44px;background:#fff;border:1px solid #8C93A0;border-radius:6px;padding:0 16px}
+.status{font-size:14px;color:var(--muted);flex-basis:100%}
+.status.err{color:var(--alta);font-weight:600}
+main{max-width:1440px;margin:0 auto;padding:24px 32px 48px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.left{flex:1 1 380px;max-width:520px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+h2.t{margin:0;font-family:var(--serif);font-size:20px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.small{font-size:13px;color:var(--muted)}
+svg.map{width:100%;height:auto;background:var(--bg);border-radius:6px;display:block;margin-top:8px}
+svg.map path{stroke:#fff;stroke-width:.8;cursor:pointer}
+svg.map path:hover{stroke:var(--ink);stroke-width:1.5}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;padding:14px 16px;border-radius:8px;background:#fff;border:1px solid var(--line);min-height:44px;color:inherit}
+.item.sel{border:2px solid var(--accent)}
+.item .ti{font-weight:700}
+.item .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.pill{font-size:13px;font-weight:700;border-radius:999px;padding:2px 10px}
+.p-alta{background:var(--alta);color:#fff}.p-media{background:var(--media);color:var(--media-ink)}.p-bassa{background:var(--bassa);color:var(--bassa-ink)}
+.st-approvato{color:var(--accent);font-weight:700}.st-scartato{text-decoration:line-through;font-weight:700}
+.note{font-size:14px;color:#3A414C;background:var(--soft);border-radius:6px;padding:10px 12px}
+.filter{font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+article{flex:999 1 560px;min-width:0;background:#fff;border:1px solid var(--line);border-radius:8px;padding:28px;display:flex;flex-direction:column;gap:22px}
+article h1{margin:0;font-family:var(--serif);font-size:30px;line-height:1.2}
+.sec h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+th{text-align:left;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--soft);vertical-align:top}
+.scroll{overflow-x:auto}
+.tag{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--soft);color:#3A414C;border:1px dashed #8C93A0;border-radius:4px;padding:1px 6px;margin-left:6px}
+blockquote{margin:0;padding:14px 18px;background:var(--bg);border-radius:6px;font-family:var(--serif);font-size:17px}
+.ini{background:var(--accent-bg);border-radius:8px;padding:18px}
+.ini h3{color:var(--accent)}
+.ini .cosa{font-size:17px;font-weight:600;margin:0 0 8px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.two .sec{border-top:3px solid var(--ink);padding-top:10px}
+.two .sec.inf{border-top:3px dashed #8C93A0}
+.dec{border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:12px}
+textarea{width:100%;border:1px solid #8C93A0;border-radius:6px;padding:10px 12px;font:inherit;resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:12px}
+.decided{padding:14px 16px;border-radius:8px;display:flex;flex-direction:column;gap:8px}
+.decided.ok{background:#DCE4F0;color:var(--accent-dark)}.decided.ko{background:var(--soft)}
+.empty{color:var(--muted);font-size:17px}
+@media (max-width:720px){header,.replay,main{padding-left:16px;padding-right:16px}.two{grid-template-columns:minmax(0,1fr)}article{padding:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="brand">Ambrogio</div><div class="sub">Segnali proattivi per chi decide · Direzione Welfare e Salute · pilota caldo × anziani soli</div></div>
+  <div class="sub" style="max-width:460px">Ambrogio propone, il Decisore decide. Nessun dato personale: solo aggregati per NIL, con fonte.</div>
+</header>
+<section class="replay" aria-label="Controllo del replay">
+  <div class="lbl">Replay 25 giugno – 7 luglio 2025</div>
+  <ol class="steps" id="steps"></ol>
+  <button class="btn btn-dark" id="avanza" type="button">Avanza</button>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+</section>
+<main>
+  <div class="left">
+    <section class="card" aria-label="Mappa dei NIL">
+      <div class="row"><h2 class="t">NIL coinvolti</h2><span class="small">confini ds964 · clic per filtrare</span></div>
+      <svg class="map" id="map" viewBox="0 0 560 520" role="img" aria-label="Mappa dei NIL di Milano"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Segnale aperto</span><span><i style="background:var(--accent-soft)"></i>altri Segnali</span><span><i style="background:var(--none)"></i>nessun Segnale</span></div>
+    </section>
+    <section aria-label="Segnali" class="list">
+      <div class="row"><h2 class="t">Segnali</h2><span class="small" id="count"></span></div>
+      <div class="filter" id="filter" hidden></div>
+      <div class="list" id="list"></div>
+      <div class="list" id="notes"></div>
+    </section>
+  </div>
+  <article id="scheda" aria-label="Scheda del Segnale"><p class="empty">Avanza al passo 1 per far analizzare ad Ambrogio i dati del 25 giugno 2025.</p></article>
+</main>
+<script>
+const PASSI_DESC = {1:'caldo livello 2',2:'livello 3 + Segnalazioni',3:'livello 3 + allerta gialla',4:'allerta arancione',5:'tiene conto degli scarti'};
+const S = {passi: [], segnali: [], aperto: null, filtroNil: null, note: {}, nilNomi: {}, features: [], busy: false};
+const $ = id => document.getElementById(id);
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : String(k));
+  return e;
+}
+function svg(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; }
+
+async function api(method, path, body) {
+  let r;
+  try { r = await fetch(path, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined}); }
+  catch (e) { throw new Error('Ambrogio non risponde. Riprova.'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(r.status >= 500 ? 'Ambrogio non risponde. Riprova.' : (data.errore || 'Richiesta rifiutata')), {status: r.status});
+  return data;
+}
+
+function fonteUrl(u) {
+  if (!u) return null;
+  if (/^https?:\/\//.test(u)) return u;
+  if (/^ds\d+/.test(u)) return 'https://dati.comune.milano.it/dataset/' + u;
+  return null;
+}
+const corrente = () => S.passi.filter(p => p.eseguito).length;
+const nomiNil = ids => ids.map(i => (S.nilNomi[i] || 'NIL') + ' (' + i + ')').join(', ');
+const fmtData = d => { const [y, m, g] = d.split('-'); return +g + '/' + +m; };
+const decisioneDi = s => s.decisione;
+
+function setStatus(msg, err, retry) {
+  const st = $('status'); st.replaceChildren(); st.className = 'status' + (err ? ' err' : '');
+  if (msg) st.append(msg);
+  if (retry) st.append(' ', el('button', {type: 'button', class: 'btn-light', onclick: retry}, 'Riprova'));
+}
+
+function renderSteps() {
+  const c = corrente();
+  $('steps').replaceChildren(...S.passi.map(p => el('li', {class: p.numero === c ? 'cur' : p.numero < c ? 'done' : ''},
+    el('b', {}, 'Passo ' + p.numero + ' · ' + fmtData(p.data)), PASSI_DESC[p.numero] || '')));
+  const b = $('avanza');
+  b.disabled = S.busy || c >= S.passi.length;
+  b.textContent = c >= S.passi.length ? 'Replay finito' : 'Avanza al passo ' + (c + 1) + ' · ' + fmtData(S.passi[c].data);
+}
+
+function renderMap() {
+  const aperto = S.segnali.find(s => s.id === S.aperto);
+  const selNil = new Set(aperto ? aperto.nil : []), anyNil = new Set(S.segnali.flatMap(s => s.nil));
+  for (const p of $('map').querySelectorAll('path')) {
+    const id = +p.dataset.id;
+    p.setAttribute('fill', selNil.has(id) ? 'var(--accent)' : anyNil.has(id) ? 'var(--accent-soft)' : 'var(--none)');
+    p.setAttribute('stroke-width', S.filtroNil === id ? '2.5' : '.8');
+    p.setAttribute('stroke', S.filtroNil === id ? 'var(--ink)' : '#fff');
+  }
+}
+
+function buildMap() {
+  const pts = S.features.flatMap(f => f.geometry.coordinates[0]);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), pad = 12;
+  const sc = Math.min((560 - 2 * pad) / ((x1 - x0) * k), (520 - 2 * pad) / (y1 - y0));
+  const proj = ([x, y]) => [(pad + (x - x0) * k * sc).toFixed(1), (pad + (y1 - y) * sc).toFixed(1)];
+  $('map').replaceChildren(...S.features.map(f => {
+    const id = +f.properties.ID_NIL;
+    const d = f.geometry.coordinates.map(r => 'M' + r.map(p => proj(p).join(',')).join('L') + 'Z').join('');
+    const p = svg('path', {d, 'data-id': id, tabindex: '0', role: 'button', 'aria-label': f.properties.NIL});
+    p.append(svg('title', {})); p.firstChild.textContent = f.properties.NIL;
+    const toggle = () => { S.filtroNil = S.filtroNil === id ? null : id; render(); };
+    p.addEventListener('click', toggle);
+    p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    return p;
+  }));
+}
+
+function renderList() {
+  let vis = S.segnali.slice().sort((a, b) => b.passo - a.passo);
+  if (S.filtroNil != null) vis = vis.filter(s => s.nil.includes(S.filtroNil));
+  const f = $('filter');
+  f.hidden = S.filtroNil == null;
+  if (S.filtroNil != null) f.replaceChildren('Filtro: ' + (S.nilNomi[S.filtroNil] || S.filtroNil), el('button', {type: 'button', class: 'btn-light', onclick: () => { S.filtroNil = null; render(); }}, 'Togli filtro'));
+  const decisi = S.segnali.filter(decisioneDi).length;
+  $('count').textContent = S.segnali.length + ' Segnali · ' + decisi + ' decisi';
+  $('list').replaceChildren(...vis.map(s => {
+    const d = decisioneDi(s), stato = d ? d.esito : 'da decidere';
+    return el('button', {type: 'button', class: 'item' + (s.id === S.aperto ? ' sel' : ''), onclick: () => { S.aperto = s.id; render(); }},
+      el('span', {class: 'meta'}, el('span', {class: 'pill p-' + s.priorita}, 'priorità ' + s.priorita),
+        'passo ' + s.passo + ' · ' + fmtData(S.passi[s.passo - 1].data), el('span', {class: d ? 'st-' + d.esito : ''}, stato)),
+      el('span', {class: 'ti'}, s.titolo), el('span', {class: 'small'}, nomiNil(s.nil)));
+  }));
+  if (!vis.length && S.segnali.length) $('list').append(el('p', {class: 'small'}, 'Nessun Segnale per questo NIL.'));
+  const notes = [];
+  for (const [n, nt] of Object.entries(S.note)) {
+    for (const ig of nt.segnalazioni_ignorate || []) notes.push(el('div', {class: 'note'}, 'Passo ' + n + ' · Segnalazione ' + ig.id + ' (' + ig.nil + ') ignorata: ' + ig.motivo + '.', ig.inventata ? el('span', {class: 'tag'}, 'inventata') : null));
+    if (+n === 5 || (nt.scarti_considerati || []).length && +n === corrente()) {
+      const sc = nt.scarti_considerati || [];
+      notes.push(el('div', {class: 'note'}, sc.length
+        ? 'Passo ' + n + ' · Ambrogio ha considerato ' + sc.length + (sc.length === 1 ? ' Segnale scartato' : ' Segnali scartati') + ': ' + sc.map(d => d.segnale_id + ' («' + d.motivo + '»)').join('; ') + '.'
+        : 'Passo ' + n + ' · Nessun Segnale scartato da considerare.'));
+    }
+  }
+  $('notes').replaceChildren(...notes);
+}
+
+function sec(title, ...kids) { return el('section', {class: 'sec'}, el('h3', {}, title), ...kids); }
+
+function renderScheda() {
+  const s = S.segnali.find(x => x.id === S.aperto);
+  const a = $('scheda');
+  if (!s) { a.replaceChildren(el('p', {class: 'empty'}, corrente() ? 'Nessun Segnale in questo passo: «nessun segnale rilevante» è un esito valido.' : 'Avanza al passo 1 per far analizzare ad Ambrogio i dati del 25 giugno 2025.')); return; }
+  const d = decisioneDi(s), aperta = s.passo === corrente();
+  const inventata = e => /inventat/i.test((e.fonte && e.fonte.titolo) + ' ' + e.valore);
+  const ev = el('div', {class: 'scroll'}, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Valore'), el('th', {}, 'NIL'), el('th', {}, 'Periodo'), el('th', {}, 'Fonte'))),
+    el('tbody', {}, s.evidenze.map(e => { const u = fonteUrl(e.fonte.url);
+      return el('tr', {}, el('td', {style: 'font-weight:600'}, e.valore, inventata(e) ? el('span', {class: 'tag'}, 'inventata') : null), el('td', {}, e.nil), el('td', {}, e.periodo),
+        el('td', {}, u ? el('a', {href: u, target: '_blank', rel: 'noopener'}, e.fonte.titolo) : e.fonte.titolo)); }))));
+  const ap = s.appiglio, apUrl = fonteUrl(ap.url);
+  const motivo = el('textarea', {id: 'motivo', rows: '2', placeholder: 'Es. già coperto dal monitoraggio di Milano Aiuta Estate in questo NIL'});
+  const err = el('div', {role: 'alert', style: 'font-size:14px;color:var(--alta);font-weight:600'});
+  const decidi = async (esito) => {
+    const m = motivo.value.trim();
+    if (esito === 'scartato' && !m) { err.textContent = 'Scrivi il motivo prima di scartare.'; motivo.focus(); return; }
+    try { await api('POST', '/api/segnali/' + encodeURIComponent(s.id) + '/decisione', {esito, motivo: m}); await refresh(); }
+    catch (e) { err.textContent = e.message; }
+  };
+  let decBox;
+  if (d) {
+    decBox = el('div', {class: 'decided ' + (d.esito === 'approvato' ? 'ok' : 'ko')}, el('strong', {}, d.esito === 'approvato' ? 'Approvato.' : 'Scartato.'),
+      d.esito === 'scartato' ? 'Motivo: ' + d.motivo + ' — Ambrogio lo riceve al passo successivo.' : 'Segnato come approvato. Nessuna azione automatica.',
+      aperta ? el('button', {type: 'button', class: 'btn-light', style: 'align-self:flex-start', onclick: () => decidi(null)}, 'Annulla decisione') : el('span', {class: 'small'}, 'Decisione chiusa: il replay è avanzato.'), err);
+  } else if (aperta) {
+    decBox = el('div', {style: 'display:flex;flex-direction:column;gap:12px'},
+      el('label', {for: 'motivo', style: 'font-size:14px;font-weight:600'}, 'Motivo dello scarto ', el('span', {style: 'font-weight:400;color:var(--muted)'}, '(obbligatorio per scartare; Ambrogio lo riceve al passo successivo)')),
+      motivo, err,
+      el('div', {class: 'actions'}, el('button', {type: 'button', class: 'btn btn-accent', onclick: () => decidi('approvato')}, 'Approva'),
+        el('button', {type: 'button', class: 'btn btn-outline', onclick: () => decidi('scartato')}, 'Scarta con motivo')),
+      el('div', {class: 'small'}, 'Approvare segna il Segnale come approvato, nient\'altro: Ambrogio non agisce e non contatta nessuno.'));
+  } else {
+    decBox = el('div', {class: 'small'}, 'Nessuna decisione presa prima dell\'avanzamento: il Segnale resta da decidere.');
+  }
+  a.replaceChildren(
+    el('div', {style: 'display:flex;flex-direction:column;gap:10px'},
+      el('div', {class: 'meta', style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center'}, el('span', {class: 'pill p-' + s.priorita}, 'priorità ' + s.priorita),
+        el('span', {class: 'pill', style: 'border:1px solid #8C93A0;color:var(--bassa-ink);font-weight:600'}, 'confidenza ' + s.confidenza),
+        el('span', {class: 'small'}, 'passo ' + s.passo + ' · ' + fmtData(S.passi[s.passo - 1].data))),
+      el('h1', {}, s.titolo),
+      el('div', {style: 'display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px'}, el('span', {}, el('strong', {}, 'NIL: '), nomiNil(s.nil)), el('span', {}, el('strong', {}, 'Finestra: '), s.finestra)),
+      el('p', {class: 'small', style: 'margin:0'}, el('strong', {style: 'color:var(--ink)'}, 'La confidenza dipende da: '), s.confidenza_dipende_da)),
+    sec('Evidenze', ev),
+    sec('Appiglio', el('blockquote', {}, '«' + ap.citazione + '»'),
+      el('div', {class: 'small', style: 'margin-top:8px'}, apUrl ? el('a', {href: apUrl, target: '_blank', rel: 'noopener'}, ap.documento) : ap.documento, ' · ' + ap.pagina + ' · ' + ap.ente)),
+    el('section', {class: 'sec ini'}, el('h3', {}, 'Iniziativa proposta'), el('p', {class: 'cosa'}, s.iniziativa.cosa),
+      el('div', {style: 'font-size:14px'}, el('strong', {}, 'Servizi esistenti: '), s.iniziativa.servizi_esistenti.join('; ') || '—'),
+      el('div', {style: 'font-size:14px'}, el('strong', {}, 'Chi la attiva: '), s.iniziativa.chi_la_attiva)),
+    el('div', {class: 'two'}, sec('Cosa mostrano i dati', el('p', {style: 'margin:0'}, s.dati_mostrano)), el('section', {class: 'sec inf'}, el('h3', {}, 'Cosa è inferito'), el('p', {style: 'margin:0'}, s.inferito))),
+    sec('Da verificare sul territorio', el('p', {style: 'margin:0'}, s.da_verificare)),
+    el('section', {class: 'dec', 'aria-label': 'Decisione'}, decBox));
+}
+
+function render() { renderSteps(); renderMap(); renderList(); renderScheda(); }
+
+async function refresh() {
+  [S.passi, S.segnali] = await Promise.all([api('GET', '/api/passi'), api('GET', '/api/segnali')]);
+  if (!S.segnali.some(s => s.id === S.aperto)) S.aperto = S.segnali.length ? S.segnali[S.segnali.length - 1].id : null;
+  render();
+}
+
+async function avanza() {
+  const n = corrente() + 1;
+  S.busy = true; renderSteps(); setStatus('Ambrogio sta analizzando il passo ' + n + '…');
+  try {
+    const r = await api('POST', '/api/passi/' + n);
+    S.note[n] = {segnalazioni_ignorate: r.segnalazioni_ignorate, scarti_considerati: r.scarti_considerati};
+    S.busy = false; setStatus('');
+    await refresh();
+    S.aperto = r.segnali.length ? r.segnali[0].id : null;
+    render();
+  } catch (e) { S.busy = false; renderSteps(); setStatus(e.message, true, avanza); }
+}
+
+$('avanza').addEventListener('click', avanza);
+
+(async function init() {
+  try {
+    const geo = await api('GET', '/api/nil.geojson');
+    S.features = geo.features;
+    for (const f of geo.features) S.nilNomi[+f.properties.ID_NIL] = f.properties.NIL.split(' - ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' – ');
+    buildMap();
+    await refresh();
+  } catch (e) { setStatus(e.message, true, () => location.reload()); }
+})();
+</script>
+</body>
+</html>

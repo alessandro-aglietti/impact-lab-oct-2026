@@ -1,6 +1,6 @@
 # Data plugin per NIL
 
-Status: ready-for-agent
+Status: done
 
 Implementare i data plugin del pilota come strumenti invocabili da Claude (ADR 0001). Ogni plugin è deterministico, accetta la data del replay e restituisce dati aggregati per NIL con fonte, periodo e data di aggiornamento.
 
@@ -18,3 +18,7 @@ Blocked by: 02, 03
 ## Taglio per le 16:00
 
 Ogni plugin implementa `DataPlugin` di `src/ambrogio/contracts.py`; esporre `tutti_i_plugin() -> list[DataPlugin]`. Non cablare in Ambrogio: lo fa il ticket 09.
+
+## Comments
+
+- PR https://github.com/alessandro-aglietti/impact-lab-oct-2026/pull/2: data plugin per NIL (allerte, anziani 80+ con segreto statistico, rischio calore, spazi freschi e fontanelle, NIL esondabili, Segnalazioni) esposti da `tutti_i_plugin()`, solo dati versionati e aggregati per NIL.

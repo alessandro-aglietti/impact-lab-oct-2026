@@ -5,6 +5,8 @@ description = "Ambrogio: surfaces Segnali, each with an Iniziativa, for the Deci
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40",
+    "beautifulsoup4>=4.15.0",
+    "pypdf>=6.19.0",
     "python-dotenv>=1.0",
 ]
 
