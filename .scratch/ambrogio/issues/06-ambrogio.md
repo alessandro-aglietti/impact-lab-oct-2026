@@ -6,10 +6,13 @@ Agente Claude che, a ogni passo del replay, interroga data plugin e registro deg
 
 Input del passo: data del replay, dati nuovi del passo, Segnali precedenti con esito, Segnali scartati con motivo.
 
-Blocked by: 04, 05
 
 ## Criteri di accettazione
 
 - Output strutturato conforme allo schema del Segnale.
 - Ogni evidenza quantitativa risale a un data plugin; ogni Iniziativa ha un appiglio nel registro.
 - I cinque passi della demo producono gli esiti attesi della spec, inclusa la Segnalazione non inerente ignorata e il Segnale scartato rispettato al passo 5.
+
+## Taglio per le 16:00
+
+Non aspetta 04 e 05. Ambrogio riceve `list[DataPlugin]` e `RegistroObiettivi` per iniezione (`src/ambrogio/contracts.py`) e implementa `Replay`. Sviluppo e test contro implementazioni fixture in `tests/` (o `src/ambrogio/fixtures/`) costruite sui dati della spec. L'E2E chiama Claude davvero con i fixture. Gli esiti attesi dei cinque passi coi dati reali si verificano nel ticket 09.

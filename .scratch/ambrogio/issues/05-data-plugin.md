@@ -14,3 +14,7 @@ Blocked by: 02, 03
 
 - Join su `ID_NIL`; nessun dato a livello di persona esce da un plugin.
 - Ogni risposta riporta fonte (slug o URL), periodo e data di aggiornamento.
+
+## Taglio per le 16:00
+
+Ogni plugin implementa `DataPlugin` di `src/ambrogio/contracts.py`; esporre `tutti_i_plugin() -> list[DataPlugin]`. Non cablare in Ambrogio: lo fa il ticket 09.

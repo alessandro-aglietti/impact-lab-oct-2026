@@ -19,6 +19,8 @@ const FEATURE = A.feature || 'ambrogio'
 const ONLY = Array.isArray(A.tickets) ? A.tickets.map(String) : null
 const AUTO_MERGE = A.autoMerge !== false
 const MAX_ROUNDS = A.maxReviewRounds || 3
+// false: skip the extra review that re-checks the last fix; a green fix (unit + E2E) is trusted. Faster, less safe.
+const FINAL_REVIEW = A.finalReview !== false
 const ATTRIB = A.sessionUrl
   ? `End every commit message with the line "Claude-Session: ${A.sessionUrl}" and every PR body with the line "${A.sessionUrl}".`
   : ''
@@ -198,7 +200,7 @@ async function deliver(t, implementPrompt) {
   let lastBlocking = []
   let lastE2E = impl.e2e
   // MAX_ROUNDS fix rounds; the extra review round verifies the last fix.
-  for (let round = 1; round <= MAX_ROUNDS + 1; round++) {
+  for (let round = 1; round <= MAX_ROUNDS + (FINAL_REVIEW ? 1 : 0); round++) {
     const lenses = [
       {
         key: 'spec',
@@ -250,6 +252,10 @@ ${E2E_RULES}`,
     if (!fix) return { id: tag, merged: false, pr: impl.prUrl, reason: 'fixer died' }
     lastE2E = fix.e2e
     if (!lastBlocking.length) break // only minor findings, now fixed
+    if (!FINAL_REVIEW && round === MAX_ROUNDS && fix.unitTestsPassed && fix.e2e.passed) {
+      log(`${tag}: last fix round green, trusting it without a re-review`)
+      lastBlocking = []
+    }
   }
 
   if (lastBlocking.length) {
