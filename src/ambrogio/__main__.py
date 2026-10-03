@@ -25,37 +25,56 @@ def _add_obiettivi(commands) -> None:
     obiettivi = commands.add_parser("obiettivi", help="registro degli Obiettivi dei documenti di indirizzo")
     sub = obiettivi.add_subparsers(dest="azione", metavar="<azione>", required=True)
 
-    estrai = sub.add_parser("estrai", help="Claude estrae gli Obiettivi dai documenti versionati")
-    estrai.add_argument("--out", type=Path, default=None, help="file JSONL (default data/documenti/obiettivi.jsonl)")
+    estrai = sub.add_parser("estrai", help="Claude estrae Obiettivi e servizi esistenti dai documenti versionati")
+    estrai.add_argument("--out", type=Path, default=None, help="Obiettivi, JSONL (default data/documenti/obiettivi.jsonl)")
+    estrai.add_argument("--servizi-out", type=Path, default=None,
+                        help="servizi esistenti, JSONL (default data/documenti/servizi.jsonl)")
     estrai.add_argument("--modello", default=None, help="modello Claude (default CLAUDE_MODEL)")
     estrai.set_defaults(func=_obiettivi_estrai)
 
-    cerca = sub.add_parser("cerca", help="Obiettivi pertinenti a un tema, in JSON")
-    cerca.add_argument("tema")
-    cerca.add_argument("--limite", type=int, default=5)
-    cerca.add_argument("--registro", type=Path, default=None, help="file JSONL del registro")
-    cerca.set_defaults(func=_obiettivi_cerca)
+    for nome, aiuto in (("cerca", "Obiettivi dei documenti di indirizzo pertinenti a un tema, in JSON"),
+                        ("servizi", "servizi esistenti citabili pertinenti a un tema, in JSON")):
+        cerca = sub.add_parser(nome, help=aiuto)
+        cerca.add_argument("tema")
+        cerca.add_argument("--limite", type=_non_negativo, default=5)
+        cerca.add_argument("--registro", type=Path, default=None, help="file JSONL degli Obiettivi")
+        cerca.add_argument("--servizi", type=Path, default=None, help="file JSONL dei servizi esistenti")
+        cerca.set_defaults(func=_obiettivi_cerca)
 
     indice = sub.add_parser("indice", help="documenti solo indicizzati, in JSON")
     indice.set_defaults(func=_obiettivi_indice)
+
+
+def _non_negativo(valore: str) -> int:
+    n = int(valore)
+    if n < 0:
+        raise argparse.ArgumentTypeError(f"deve essere >= 0, non {n}")
+    return n
 
 
 def _obiettivi_estrai(args) -> int:
     from ambrogio import config, registro
 
     out = args.out or registro.REGISTRO_PATH
-    obiettivi = registro.estrai_registro(
+    out_servizi = args.servizi_out or registro.SERVIZI_PATH
+    obiettivi, servizi = registro.estrai_registro(
         config.client(), args.modello or config.model(), log=lambda m: print(m, file=sys.stderr)
     )
     registro.scrivi(obiettivi, out)
-    print(f"{len(obiettivi)} Obiettivi scritti in {out}", file=sys.stderr)
+    registro.scrivi(servizi, out_servizi)
+    print(f"{len(obiettivi)} Obiettivi in {out}, {len(servizi)} servizi esistenti in {out_servizi}", file=sys.stderr)
     return 0
 
 
 def _obiettivi_cerca(args) -> int:
     from ambrogio import registro
 
-    risultati = registro.RegistroJsonl(args.registro).cerca(args.tema, args.limite)
+    try:
+        reg = registro.RegistroJsonl(args.registro, args.servizi)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"errore: {e}", file=sys.stderr)
+        return 2
+    risultati = (reg.cerca if args.azione == "cerca" else reg.servizi)(args.tema, args.limite)
     print(json.dumps([asdict(o) for o in risultati], ensure_ascii=False, indent=2))
     return 0
 

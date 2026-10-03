@@ -20,7 +20,7 @@ RECORD = {
     "uso": "registro",
 }
 SEZIONI = [
-    registro.Sezione("p. 1", "Indice del documento."),
+    registro.Sezione("p. 1", "Indice del documento. Validità dal 15 maggio al 15 settembre 2026."),
     registro.Sezione("p. 2", "Il Piano individua la popolazione vulnerabile, con particolare attenzione agli over 75 soli."),
     registro.Sezione("p. 3", "Le ASST attivano il monitoraggio telefonico dei fragili in caso di livello 3."),
 ]
@@ -54,15 +54,15 @@ def test_trova_citazione_rejects_too_short_quotes():
 
 def test_sezioni_pdf_are_pdf_pages():
     sezioni = registro.sezioni_documento(PIANO_CALDO)
-    assert [s.etichetta for s in sezioni][:3] == ["p. 1", "p. 2", "p. 3"]
+    assert [s.etichetta for s in sezioni][:3] == ["copertina", "p. 1", "p. 2"]  # numeri stampati, non indici
     assert len(sezioni) == 13
-    assert "hhww" in sezioni[7].testo  # p. 8: Sistema di allerta e monitoraggio
+    assert "HHWW" in sezioni[7].testo  # Pag. 7: Sistema di allerta e monitoraggio
     assert "ﬁ" not in "".join(s.testo for s in sezioni)
 
 
 def test_sezioni_html_are_paragraphs_of_the_main_text():
     sezioni = registro.sezioni_documento(MILANO_AIUTA)
-    assert all(s.etichetta.startswith("§ ") for s in sezioni)
+    assert sezioni[0].etichetta == "titolo" and all(s.etichetta.startswith("§ ") for s in sezioni[1:])
     testo = " ".join(s.testo for s in sezioni)
     assert "02.02.02" in testo
     assert "spazi freschi" in testo
@@ -197,21 +197,25 @@ def test_indice_lists_index_only_documents_from_the_manifest():
 # --- registro versionato -------------------------------------------------------------------------
 
 
-def test_versioned_registro_has_only_verifiable_quotes_with_page():
+def test_versioned_registro_is_not_empty():
+    # Pagine e citazioni sono verificate senza il codice del registro in test_04_registro_review.py.
     reg = registro.RegistroJsonl()
     assert reg.obiettivi, "data/documenti/obiettivi.jsonl is empty: run `uv run ambrogio obiettivi estrai`"
-    per_documento = {r["titolo"]: r for r in registro.manifest()}
-    cache = {}
-    for o in reg.obiettivi:
-        file = config.DOCUMENTI_DIR / "files" / per_documento[o.documento]["file"]
-        sezioni = cache.setdefault(file, registro.sezioni_documento(file))
-        assert o.pagina and registro.trova_citazione(o.citazione, sezioni, o.pagina) == o.pagina, o.id
-    assert any(o.documento == "Piano Caldo 2026 ATS Milano" for o in reg.obiettivi)
+    assert {o.documento for o in reg.obiettivi} == {"Piano Caldo 2026 ATS Milano"}
+    assert reg.servizi_esistenti, "data/documenti/servizi.jsonl is empty: run `uv run ambrogio obiettivi estrai`"
 
 
-@pytest.mark.parametrize("tema", ["solitudine anziani", "luoghi freschi", "accessibilità trasporto"])
-def test_versioned_registro_answers_the_spec_themes(tema):
+@pytest.mark.parametrize("tema", ["solitudine anziani", "luoghi freschi"])
+def test_versioned_registro_answers_the_spec_themes_with_obiettivi(tema):
     assert registro.RegistroJsonl().cerca(tema)
+
+
+def test_versioned_registro_answers_accessibility_with_servizi_esistenti():
+    # Il Piano Caldo (unico documento di indirizzo ingerito per le 16:00) non ha misure su trasporto o accessibilità:
+    # la ricerca lo dice con una lista vuota invece di spacciare un comunicato per un appiglio.
+    reg = registro.RegistroJsonl()
+    assert reg.cerca("accessibilità trasporto") == []
+    assert reg.servizi("accessibilità trasporto")
 
 
 # --- CLI -----------------------------------------------------------------------------------------
