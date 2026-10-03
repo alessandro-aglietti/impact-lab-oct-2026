@@ -14,7 +14,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"ambrogio {__version__}")
     commands = parser.add_subparsers(dest="command", metavar="<command>")
     plugins.aggiungi_comando(commands)  # ticket 05
+    serve = commands.add_parser("serve", help="API del replay e portale del Decisore su http://HOST:PORT")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.set_defaults(func=_serve)
     return parser
+
+
+def _serve(args: argparse.Namespace) -> int:
+    from ambrogio.server import serve
+
+    server = serve(args.host, args.port)
+    print(f"Ambrogio su http://{args.host}:{args.port}  (API su /api/, Ctrl-C per fermare)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
