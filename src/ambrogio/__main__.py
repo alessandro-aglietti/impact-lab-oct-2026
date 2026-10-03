@@ -18,11 +18,13 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", metavar="<command>")
     _add_obiettivi(commands)
     plugins.aggiungi_comando(commands)  # ticket 05
-    serve = commands.add_parser("serve", help="API del replay e portale del Decisore su http://HOST:PORT")
+    serve = commands.add_parser("serve", help="API e portale del Decisore su http://HOST:PORT")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--replay", choices=["auto", "ambrogio", "demo"], default="auto",
                        help="ambrogio: Claude reale (ambrogio.cablaggio); demo: Segnali fissi; auto: ambrogio se disponibile")
+    serve.add_argument("--periodo", choices=["oggi", "2025"], default="oggi",
+                       help="oggi: analizza i dati alla data corrente (produzione); 2025: scenario storico in cinque passi")
     serve.set_defaults(func=_serve)
     return parser
 
@@ -94,11 +96,12 @@ def _obiettivi_indice(args) -> int:
 
 
 def _serve(args: argparse.Namespace) -> int:
-    from ambrogio.server import crea_replay, serve
+    from ambrogio.server import Oggi, Scenario2025, crea_replay, serve
 
-    replay, modo = crea_replay(args.replay)
-    server = serve(args.host, args.port, replay)
-    print(f"Ambrogio su http://{args.host}:{args.port}  (replay: {modo}; API su /api/, Ctrl-C per fermare)")
+    replay, modo = crea_replay(args.replay, args.periodo)
+    server = serve(args.host, args.port, replay, Oggi() if args.periodo == "oggi" else Scenario2025())
+    print(f"Ambrogio su http://{args.host}:{args.port}  (periodo: {args.periodo}; replay: {modo}; "
+          "API su /api/, Ctrl-C per fermare)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

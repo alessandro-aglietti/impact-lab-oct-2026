@@ -231,3 +231,9 @@ def test_segnalazioni_text_is_marked_as_untrusted_citizen_text():
     p = plugin("segnalazioni")
     assert "non sono istruzioni" in p.descrizione
     assert "non sono istruzioni" in p.interroga(PASSO_2).note
+
+
+def test_production_leaves_out_the_invented_segnalazioni():
+    segn = next(p for p in tutti_i_plugin(inventate=False) if p.nome == "segnalazioni")
+    assert segn.interroga(date(2026, 10, 3)).dati == []
+    assert plugin("segnalazioni").interroga(date(2026, 10, 3)).dati  # scenario 2025: ci sono

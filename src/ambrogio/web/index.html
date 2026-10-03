@@ -80,8 +80,8 @@ textarea{width:100%;border:1px solid #8C93A0;border-radius:6px;padding:10px 12px
   <div><div class="brand">Ambrogio</div><div class="sub">Segnali proattivi per chi decide · Direzione Welfare e Salute · pilota caldo × anziani soli</div></div>
   <div class="sub" style="max-width:460px">Ambrogio propone, il Decisore decide. Nessun dato personale: solo aggregati per NIL, con fonte.</div>
 </header>
-<section class="replay" aria-label="Controllo del replay">
-  <div class="lbl">Replay 25 giugno – 7 luglio 2025</div>
+<section class="replay" aria-label="Controllo dell'analisi">
+  <div class="lbl" id="periodo"></div>
   <ol class="steps" id="steps"></ol>
   <button class="btn btn-dark" id="avanza" type="button">Avanza</button>
   <div class="status" id="status" role="status" aria-live="polite"></div>
@@ -100,11 +100,18 @@ textarea{width:100%;border:1px solid #8C93A0;border-radius:6px;padding:10px 12px
       <div class="list" id="notes"></div>
     </section>
   </div>
-  <article id="scheda" aria-label="Scheda del Segnale"><p class="empty">Avanza al passo 1 per far analizzare ad Ambrogio i dati del 25 giugno 2025.</p></article>
+  <article id="scheda" aria-label="Scheda del Segnale"><p class="empty"></p></article>
 </main>
 <script>
 const PASSI_DESC = {1:'caldo livello 2',2:'livello 3 + Segnalazioni',3:'livello 3 + allerta gialla',4:'allerta arancione',5:'tiene conto degli scarti'};
-const S = {passi: [], segnali: [], aperto: null, filtroNil: null, note: {}, nilNomi: {}, features: [], busy: false};
+const S = {contesto: {periodo: 'oggi'}, passi: [], segnali: [], aperto: null, filtroNil: null, note: {}, nilNomi: {}, features: [], busy: false};
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const fmtLunga = d => { const [y, m, g] = d.split('-'); return +g + ' ' + MESI[m - 1] + ' ' + y; };
+const live = () => S.contesto.periodo === 'oggi';
+const nomePasso = n => (live() ? 'Analisi ' : 'Passo ') + n;
+const invito = () => live()
+  ? 'Avvia l\'analisi per far leggere ad Ambrogio i dati di oggi' + (S.contesto.oggi ? ' (' + fmtLunga(S.contesto.oggi) + ')' : '') + '.'
+  : 'Avanza al passo 1 per far analizzare ad Ambrogio i dati del 25 giugno 2025.';
 const $ = id => document.getElementById(id);
 
 function el(tag, attrs, ...kids) {
@@ -147,10 +154,13 @@ function setStatus(msg, err, retry) {
 function renderSteps() {
   const c = corrente();
   $('steps').replaceChildren(...S.passi.map(p => el('li', {class: p.numero === c ? 'cur' : p.numero < c ? 'done' : ''},
-    el('b', {}, 'Passo ' + p.numero + ' · ' + fmtData(p.data)), PASSI_DESC[p.numero] || '')));
+    el('b', {}, nomePasso(p.numero) + ' · ' + fmtData(p.data)), live() ? (p.eseguito ? 'eseguita' : 'da avviare') : PASSI_DESC[p.numero] || '')));
+  $('periodo').textContent = live() ? 'Dati di oggi · ' + (S.contesto.oggi ? fmtLunga(S.contesto.oggi) : '') : 'Scenario storico · 25 giugno – 7 luglio 2025';
   const b = $('avanza');
   b.disabled = S.busy || c >= S.passi.length;
-  b.textContent = c >= S.passi.length ? 'Replay finito' : 'Avanza al passo ' + (c + 1) + ' · ' + fmtData(S.passi[c].data);
+  b.textContent = c >= S.passi.length ? 'Scenario concluso'
+    : live() ? (c ? 'Nuova analisi · ' : 'Analizza i dati di oggi · ') + fmtData(S.passi[c].data)
+    : 'Avanza al passo ' + (c + 1) + ' · ' + fmtData(S.passi[c].data);
 }
 
 function renderMap() {
@@ -195,18 +205,18 @@ function renderList() {
     const d = decisioneDi(s), stato = d ? d.esito : 'da decidere';
     return el('button', {type: 'button', class: 'item' + (s.id === S.aperto ? ' sel' : ''), onclick: () => { S.aperto = s.id; render(); }},
       el('span', {class: 'meta'}, el('span', {class: 'pill p-' + s.priorita}, 'priorità ' + s.priorita),
-        'passo ' + s.passo + ' · ' + fmtData(S.passi[s.passo - 1].data), el('span', {class: d ? 'st-' + d.esito : ''}, stato)),
+        nomePasso(s.passo).toLowerCase() + ' · ' + fmtData(S.passi[s.passo - 1].data), el('span', {class: d ? 'st-' + d.esito : ''}, stato)),
       el('span', {class: 'ti'}, s.titolo), el('span', {class: 'small'}, nomiNil(s.nil)));
   }));
   if (!vis.length && S.segnali.length) $('list').append(el('p', {class: 'small'}, 'Nessun Segnale per questo NIL.'));
   const notes = [];
   for (const [n, nt] of Object.entries(S.note)) {
-    for (const ig of nt.segnalazioni_ignorate || []) notes.push(el('div', {class: 'note'}, 'Passo ' + n + ' · Segnalazione ' + ig.id + ' (' + ig.nil + ') ignorata: ' + ig.motivo + '.', ig.inventata ? el('span', {class: 'tag'}, 'inventata') : null));
-    if (+n === 5 || (nt.scarti_considerati || []).length && +n === corrente()) {
+    for (const ig of nt.segnalazioni_ignorate || []) notes.push(el('div', {class: 'note'}, nomePasso(n) + ' · Segnalazione ' + ig.id + ' (' + ig.nil + ') ignorata: ' + ig.motivo + '.', ig.inventata ? el('span', {class: 'tag'}, 'inventata') : null));
+    if ((!live() && +n === 5) || (nt.scarti_considerati || []).length && +n === corrente()) {
       const sc = nt.scarti_considerati || [];
       notes.push(el('div', {class: 'note'}, sc.length
-        ? 'Passo ' + n + ' · Ambrogio ha considerato ' + sc.length + (sc.length === 1 ? ' Segnale scartato' : ' Segnali scartati') + ': ' + sc.map(d => d.segnale_id + ' («' + d.motivo + '»)').join('; ') + '.'
-        : 'Passo ' + n + ' · Nessun Segnale scartato da considerare.'));
+        ? nomePasso(n) + ' · Ambrogio ha considerato ' + sc.length + (sc.length === 1 ? ' Segnale scartato' : ' Segnali scartati') + ': ' + sc.map(d => d.segnale_id + ' («' + d.motivo + '»)').join('; ') + '.'
+        : nomePasso(n) + ' · Nessun Segnale scartato da considerare.'));
     }
   }
   $('notes').replaceChildren(...notes);
@@ -217,7 +227,7 @@ function sec(title, ...kids) { return el('section', {class: 'sec'}, el('h3', {},
 function renderScheda() {
   const s = S.segnali.find(x => x.id === S.aperto);
   const a = $('scheda');
-  if (!s) { a.replaceChildren(el('p', {class: 'empty'}, corrente() ? 'Nessun Segnale in questo passo: «nessun segnale rilevante» è un esito valido.' : 'Avanza al passo 1 per far analizzare ad Ambrogio i dati del 25 giugno 2025.')); return; }
+  if (!s) { a.replaceChildren(el('p', {class: 'empty'}, corrente() ? 'Nessun Segnale in ' + (live() ? 'questa analisi' : 'questo passo') + ': «nessun segnale rilevante» è un esito valido.' : invito())); return; }
   const d = decisioneDi(s), aperta = s.passo === corrente();
   const inventata = e => /inventat/i.test((e.fonte && e.fonte.titolo) + ' ' + e.valore);
   const ev = el('div', {class: 'scroll'}, el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Valore'), el('th', {}, 'NIL'), el('th', {}, 'Periodo'), el('th', {}, 'Fonte'))),
@@ -236,11 +246,11 @@ function renderScheda() {
   let decBox;
   if (d) {
     decBox = el('div', {class: 'decided ' + (d.esito === 'approvato' ? 'ok' : 'ko')}, el('strong', {}, d.esito === 'approvato' ? 'Approvato.' : 'Scartato.'),
-      d.esito === 'scartato' ? 'Motivo: ' + d.motivo + ' — Ambrogio lo riceve al passo successivo.' : 'Segnato come approvato. Nessuna azione automatica.',
-      aperta ? el('button', {type: 'button', class: 'btn-light', style: 'align-self:flex-start', onclick: () => decidi(null)}, 'Annulla decisione') : el('span', {class: 'small'}, 'Decisione chiusa: il replay è avanzato.'), err);
+      d.esito === 'scartato' ? 'Motivo: ' + d.motivo + ' — Ambrogio lo riceve ' + (live() ? 'all\'analisi successiva' : 'al passo successivo') + '.' : 'Segnato come approvato. Nessuna azione automatica.',
+      aperta ? el('button', {type: 'button', class: 'btn-light', style: 'align-self:flex-start', onclick: () => decidi(null)}, 'Annulla decisione') : el('span', {class: 'small'}, 'Decisione chiusa: è partita un\'analisi successiva.'), err);
   } else if (aperta) {
     decBox = el('div', {style: 'display:flex;flex-direction:column;gap:12px'},
-      el('label', {for: 'motivo', style: 'font-size:14px;font-weight:600'}, 'Motivo dello scarto ', el('span', {style: 'font-weight:400;color:var(--muted)'}, '(obbligatorio per scartare; Ambrogio lo riceve al passo successivo)')),
+      el('label', {for: 'motivo', style: 'font-size:14px;font-weight:600'}, 'Motivo dello scarto ', el('span', {style: 'font-weight:400;color:var(--muted)'}, '(obbligatorio per scartare; Ambrogio lo riceve ' + (live() ? 'all\'analisi successiva' : 'al passo successivo') + ')')),
       motivo, err,
       el('div', {class: 'actions'}, el('button', {type: 'button', class: 'btn btn-accent', onclick: () => decidi('approvato')}, 'Approva'),
         el('button', {type: 'button', class: 'btn btn-outline', onclick: () => decidi('scartato')}, 'Scarta con motivo')),
@@ -252,7 +262,7 @@ function renderScheda() {
     el('div', {style: 'display:flex;flex-direction:column;gap:10px'},
       el('div', {class: 'meta', style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center'}, el('span', {class: 'pill p-' + s.priorita}, 'priorità ' + s.priorita),
         el('span', {class: 'pill', style: 'border:1px solid #8C93A0;color:var(--bassa-ink);font-weight:600'}, 'confidenza ' + s.confidenza),
-        el('span', {class: 'small'}, 'passo ' + s.passo + ' · ' + fmtData(S.passi[s.passo - 1].data))),
+        el('span', {class: 'small'}, nomePasso(s.passo).toLowerCase() + ' · ' + fmtData(S.passi[s.passo - 1].data))),
       el('h1', {}, s.titolo),
       el('div', {style: 'display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px'}, el('span', {}, el('strong', {}, 'NIL: '), nomiNil(s.nil)), el('span', {}, el('strong', {}, 'Finestra: '), s.finestra)),
       el('p', {class: 'small', style: 'margin:0'}, el('strong', {style: 'color:var(--ink)'}, 'La confidenza dipende da: '), s.confidenza_dipende_da)),
@@ -270,14 +280,14 @@ function renderScheda() {
 function render() { renderSteps(); renderMap(); renderList(); renderScheda(); }
 
 async function refresh() {
-  [S.passi, S.segnali] = await Promise.all([api('GET', '/api/passi'), api('GET', '/api/segnali')]);
+  [S.contesto, S.passi, S.segnali] = await Promise.all([api('GET', '/api/contesto'), api('GET', '/api/passi'), api('GET', '/api/segnali')]);
   if (!S.segnali.some(s => s.id === S.aperto)) S.aperto = S.segnali.length ? S.segnali[S.segnali.length - 1].id : null;
   render();
 }
 
 async function avanza() {
   const n = corrente() + 1;
-  S.busy = true; renderSteps(); setStatus('Ambrogio sta analizzando il passo ' + n + '…');
+  S.busy = true; renderSteps(); setStatus('Ambrogio sta analizzando ' + (live() ? 'i dati di oggi' : 'il passo ' + n) + '…');
   try {
     const r = await api('POST', '/api/passi/' + n);
     S.note[n] = {segnalazioni_ignorate: r.segnalazioni_ignorate, scarti_considerati: r.scarti_considerati};

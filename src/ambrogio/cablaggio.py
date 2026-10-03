@@ -23,8 +23,10 @@ class ReplayAmbrogio:
             return {}
         return {"segnalazioni_ignorate": [
             {"id": sid, "nil": dato.nil, "testo": str(dato.valore), "motivo": motivo, "inventata": dato.inventato}
-            for sid, (dato, motivo) in a.segnalazioni_ignorate.items()]}
+            for sid, (dato, motivo) in a.segnalazioni_ignorate.items()],
+            "scartati_considerati": dict(a.scartati_considerati)}
 
 
-def crea_replay() -> ReplayAmbrogio:
-    return ReplayAmbrogio(Ambrogio(tutti_i_plugin(), RegistroJsonl()))
+def crea_replay(inventate: bool = True) -> ReplayAmbrogio:
+    """`inventate=False` in produzione: le Segnalazioni inventate dello scenario 2025 non entrano."""
+    return ReplayAmbrogio(Ambrogio(tutti_i_plugin(inventate=inventate), RegistroJsonl()))

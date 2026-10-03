@@ -71,9 +71,12 @@ What a version 2 would add.
 
 ```bash
 git clone <this repo>
-export =<your key>
-bash run.sh
+export ANTHROPIC_API_KEY=<your key>
+bash run.sh                 # production: Ambrogio analyses today's data
+PERIODO=2025 bash run.sh    # historical scenario, 25 June to 7 July 2025, five steps
 ```
+
+Without an API key, `run.sh` falls back to the 2025 scenario with fixed Segnali.
 
 ## Team
 
