@@ -6,7 +6,7 @@ Agente Claude che, a ogni passo del replay, interroga data plugin e registro deg
 
 Input del passo: data del replay, dati nuovi del passo, Segnali precedenti con esito, Segnali scartati con motivo.
 
-Blocked by: 02, 03
+Blocked by: 04, 05
 
 ## Criteri di accettazione
 

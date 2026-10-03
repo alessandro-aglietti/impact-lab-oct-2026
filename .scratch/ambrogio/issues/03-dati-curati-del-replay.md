@@ -1,10 +1,9 @@
-# Dati del replay 25/6 – 7/7/2025
+# Dati curati del replay 25/6 – 7/7/2025
 
 Status: ready-for-agent
 
-Preparare i file statici del replay, ciascuno con fonte per riga.
+Preparare i file che non esistono come open data e vanno costruiti a mano, ciascuno con fonte per riga. I livelli HHWW arrivano dal downloader (ticket 02).
 
-- Livelli HHWW Milano dal CSV onData (`https://raw.githubusercontent.com/ondata/ondate-calore/main/data/ondate-calore_archivio.csv`, righe MILANO nella finestra). Attribuzione CC-BY-4.0.
 - Allerte Protezione Civile sul nodo idraulico di Milano, verificate:
   - 2–3/7 gialla temporali — https://www2.comune.milano.it/-/maltempo.-allerta-gialla-per-rischio-temporali-35
   - 5/7 gialla idrogeologico, 6/7 arancione temporali — https://www.milanotoday.it/meteo/allerta-meteo-temporale-grandine-domenica-6-luglio.html
