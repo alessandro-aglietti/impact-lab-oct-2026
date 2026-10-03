@@ -461,9 +461,10 @@ class Segnalazioni(_Base):
             giorno, i = date.fromisoformat(r["data"]), int(r["ID_NIL"])
             if giorno > data or i not in richiesti or (r["inventata"] == "si" and not self.inventate):
                 continue
+            inventata = r["inventata"] == "si"
             fonte = Fonte(
-                titolo="Segnalazioni inventate per il replay",
-                # Inventate: non hanno un URL pubblico, il riferimento è il file curato versionato.
+                titolo="Segnalazioni inventate per lo scenario 2025" if inventata else "Segnalazioni dei cittadini",
+                # Non hanno un URL pubblico: il riferimento è il file curato versionato.
                 url=f"data/curati/{self.FILE}",
                 periodo=giorno.isoformat(),
                 aggiornato=giorno.isoformat(),  # una segnalazione è aggiornata al giorno in cui arriva
@@ -476,7 +477,7 @@ class Segnalazioni(_Base):
                     r["testo"],
                     "testo",
                     fonte,
-                    inventato=r["inventata"] == "si",
+                    inventato=inventata,
                 )
             )
         return self._risposta(

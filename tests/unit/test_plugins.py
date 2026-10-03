@@ -237,3 +237,17 @@ def test_production_leaves_out_the_invented_segnalazioni():
     segn = next(p for p in tutti_i_plugin(inventate=False) if p.nome == "segnalazioni")
     assert segn.interroga(date(2026, 10, 3)).dati == []
     assert plugin("segnalazioni").interroga(date(2026, 10, 3)).dati  # scenario 2025: ci sono
+
+
+def test_a_real_segnalazione_is_not_labelled_as_invented(tmp_path):
+    import shutil
+
+    from ambrogio import config
+
+    shutil.copytree(config.DATA_DIR, tmp_path / "data")
+    with (tmp_path / "data" / "curati" / "segnalazioni.csv").open("a", encoding="utf-8") as f:
+        f.write('T1,2026-10-03,14,NIGUARDA,"Cantine allagate.",allagamento,si,no,test\n')
+    segn = next(p for p in tutti_i_plugin(tmp_path / "data", inventate=False) if p.nome == "segnalazioni")
+    (dato,) = segn.interroga(date(2026, 10, 3)).dati
+    assert not dato.inventato
+    assert "inventat" not in dato.fonte.titolo.lower()
