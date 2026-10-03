@@ -17,7 +17,9 @@ def test_data_dirs_live_under_repo_root():
         assert d.is_dir()
 
 
-def test_model_env_override(monkeypatch):
+def test_model_env_override(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "ROOT", tmp_path)  # no .env: model() loads .env itself
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CLAUDE_MODEL", "x-model")
     assert config.model() == "x-model"
     monkeypatch.delenv("CLAUDE_MODEL")

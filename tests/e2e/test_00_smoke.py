@@ -28,7 +28,7 @@ def test_claude_returns_structured_output(claude):
     """One cheap real call with forced tool use; assert on shape, not wording."""
     tool = {
         "name": "report_nil",
-        "description": "Report one Milan NIL (neighbourhood) name and a priority.",
+        "description": "Report one Milan NIL (Nucleo di Identità Locale) name and a priority.",
         "input_schema": {
             "type": "object",
             "properties": {

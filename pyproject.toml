@@ -1,7 +1,7 @@
 [project]
 name = "ambrogio"
 version = "0.1.0"
-description = "Ambrogio: proactive signals for City of Milan decision makers (heat x older people living alone pilot)."
+description = "Ambrogio: surfaces Segnali, each with an Iniziativa, for the Decisore of the Comune di Milano (pilot: heat x anziani soli per NIL)."
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40",

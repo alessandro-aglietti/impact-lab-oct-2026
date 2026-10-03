@@ -4,6 +4,7 @@ Every ticket reads paths and models from here instead of hard-coding them.
 """
 import os
 import subprocess
+import warnings
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -17,9 +18,15 @@ def find_root(module_file: str | os.PathLike, env: Mapping[str, str]) -> Path:
     """Repo root: $AMBROGIO_ROOT, else the source tree (editable install), else the working directory.
 
     With a non-editable install the module lives in site-packages, where parents[2] is not the repo.
+    AMBROGIO_ROOT must be exported: it is read at import, before any .env is loaded (the root is where
+    .env is looked for). A value that is not an existing directory is ignored with a warning.
     """
-    if env.get("AMBROGIO_ROOT"):
-        return Path(env["AMBROGIO_ROOT"]).resolve()
+    override = env.get("AMBROGIO_ROOT", "").strip()
+    if override:
+        path = Path(override).resolve()
+        if path.is_dir():
+            return path
+        warnings.warn(f"AMBROGIO_ROOT={override!r} is not a directory: ignored.", UserWarning, stacklevel=2)
     candidate = Path(module_file).resolve().parents[2]
     if (candidate / "pyproject.toml").is_file():
         return candidate
@@ -70,17 +77,25 @@ def env_files() -> list[Path]:
     return unique
 
 
-def load_env() -> None:
-    """Fill the environment from the .env files in env_files().
+def _is_set(name: str, value: str | None) -> bool:
+    """A value counts as set unless it is blank or, for the API key, the .env.example placeholder."""
+    if value is None or not value.strip():
+        return False
+    return not (name == KEY_VAR and value.strip().startswith(KEY_PLACEHOLDER))
 
-    A non-blank variable already in the environment wins. A blank one (e.g. `export ANTHROPIC_API_KEY=`)
-    counts as unset, so it cannot hide the value in .env.
+
+def load_env() -> None:
+    """Fill the environment from the .env files in env_files(), first file that sets a variable wins.
+
+    A variable already in the environment wins unless it is unset in the sense of _is_set(): a blank value
+    (e.g. `export ANTHROPIC_API_KEY=`) or the .env.example key placeholder cannot hide a real value in .env,
+    and neither can the placeholder in a higher-priority .env (e.g. a worktree .env copied from .env.example).
     """
     for path in env_files():
         if not path.is_file():
             continue
         for name, value in dotenv_values(path).items():
-            if value and value.strip() and not os.environ.get(name, "").strip():
+            if _is_set(name, value) and not _is_set(name, os.environ.get(name)):
                 os.environ[name] = value
 
 
@@ -93,12 +108,20 @@ def api_key_problem(key: str | None) -> str | None:
     return None
 
 
+def _setting(name: str, default: str) -> str:
+    """`name` from the environment or .env (via load_env); blank counts as unset."""
+    load_env()
+    return os.environ.get(name, "").strip() or default
+
+
 def model() -> str:
-    return os.getenv("CLAUDE_MODEL", DEFAULT_MODEL)
+    """Main model: CLAUDE_MODEL (environment or .env), default DEFAULT_MODEL."""
+    return _setting("CLAUDE_MODEL", DEFAULT_MODEL)
 
 
 def cheap_model() -> str:
-    return os.getenv("CLAUDE_CHEAP_MODEL", CHEAP_MODEL)
+    """Cheap model: CLAUDE_CHEAP_MODEL (environment or .env), default CHEAP_MODEL."""
+    return _setting("CLAUDE_CHEAP_MODEL", CHEAP_MODEL)
 
 
 def client():
