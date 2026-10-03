@@ -6,13 +6,14 @@ each with `set_defaults(func=...)` returning an exit code.
 import argparse
 import sys
 
-from ambrogio import __version__
+from ambrogio import __version__, plugins
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ambrogio", description="Ambrogio command line.")
     parser.add_argument("--version", action="version", version=f"ambrogio {__version__}")
     commands = parser.add_subparsers(dest="command", metavar="<command>")
+    plugins.aggiungi_comando(commands)  # ticket 05
     serve = commands.add_parser("serve", help="API del replay e portale del Decisore su http://HOST:PORT")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)

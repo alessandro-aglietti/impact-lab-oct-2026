@@ -14,6 +14,9 @@ from typing import Literal, Protocol
 
 Livello = Literal["alta", "media", "bassa"]
 
+# id_nil dei DatoNil che valgono per tutta la città (le Allerte): non è un ID_NIL di ds964.
+ID_NIL_CITTA = 0
+
 
 @dataclass(frozen=True)
 class Fonte:
@@ -25,7 +28,7 @@ class Fonte:
 
 @dataclass(frozen=True)
 class DatoNil:
-    """Un valore aggregato per NIL. Mai dati a livello di persona."""
+    """Un valore aggregato per NIL (o per tutta la città con id_nil = ID_NIL_CITTA). Mai dati a livello di persona."""
 
     id_nil: int
     nil: str
