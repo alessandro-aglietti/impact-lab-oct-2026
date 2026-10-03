@@ -1,6 +1,6 @@
 # Cablaggio della demo
 
-Status: ready-for-agent
+Status: done
 
 Collegare le implementazioni reali: registro degli Obiettivi (04) e data plugin (05) in Ambrogio (06). Esporre il `Replay` come API HTTP JSON per il portale del Decisore fatto con Claude Design (07): `GET /api/passi`, `POST /api/passi/{n}` (esegue il passo con le decisioni registrate, restituisce i Segnali), `GET /api/segnali`, `POST /api/segnali/{id}/decisione` (`esito`, `motivo` obbligatorio per scartare), `GET /api/nil.geojson` (confini da `data/opendata/ds964-nil-vigenti-pgt-2030.geojson`). CORS aperto. `./run.sh` avvia tutta la soluzione (dipendenze, passi di preparazione, API e portale); `uv run ambrogio serve` e il portale sono già su `main` (`docs/api.md`) con `DemoReplay`. Il 09 fornisce `ambrogio.cablaggio.crea_replay() -> Replay`, che `serve --replay auto|ambrogio` usa al posto del demo. Ogni servizio con dati derivati aggiunge a `run.sh` il proprio passo di preparazione, idempotente.
 
