@@ -1,6 +1,6 @@
 # Acquisizione dei documenti di indirizzo
 
-Status: ready-for-agent
+Status: done
 
 Portare in questo repo l'harvester dei documenti di programmazione scritto oggi nel repo di ricerca (`~/dev/personal/claude-impact-lab-20261003/scripts/atti/programmazione.py` + `programmazione_seeds.json`), **rivederlo** e **restringerlo** ai soli documenti scelti. Non copiare gli altri harvester (albo, regolamenti, trasparenza, lod); `delibere.py` solo se serve a trovare la delibera di Milano Aiuta Estate 2026.
 
@@ -44,3 +44,7 @@ Da decidere in revisione con il team: "piani programmatici" include PEG e PIAO? 
 - Un comando riscarica tutto il perimetro da zero.
 - Ogni file versionato ha il suo record nel manifest con URL e hash.
 - La demo non dipende dalla rete per i documenti versionati.
+
+## Comments
+
+- 2026-10-03 15:10: Workaround per le 16:00: `scripts/scarica_documenti.py` scarica i documenti versionati in `data/documenti/files/` e scrive `data/documenti/manifest.jsonl`. Harvester del repo di ricerca non portato.

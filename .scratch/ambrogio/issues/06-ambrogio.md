@@ -15,4 +15,4 @@ Input del passo: data del replay, dati nuovi del passo, Segnali precedenti con e
 
 ## Taglio per le 16:00
 
-Non aspetta 04 e 05. Ambrogio riceve `list[DataPlugin]` e `RegistroObiettivi` per iniezione (`src/ambrogio/contracts.py`) e implementa `Replay`. Sviluppo e test contro implementazioni fixture in `tests/` (o `src/ambrogio/fixtures/`) costruite sui dati della spec. L'E2E chiama Claude davvero con i fixture. Gli esiti attesi dei cinque passi coi dati reali si verificano nel ticket 09.
+Non aspetta 04 e 05. Ambrogio riceve `list[DataPlugin]` e `RegistroObiettivi` per iniezione (`src/ambrogio/contracts.py`) e implementa `Replay`. I dati reali sono già in `data/opendata/` e `data/curati/`; sviluppo e test contro implementazioni fixture in `tests/` (o `src/ambrogio/fixtures/`) costruite sui dati della spec. L'E2E chiama Claude davvero con i fixture. Gli esiti attesi dei cinque passi coi dati reali si verificano nel ticket 09.

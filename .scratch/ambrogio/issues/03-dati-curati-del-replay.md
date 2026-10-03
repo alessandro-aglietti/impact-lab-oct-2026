@@ -1,6 +1,6 @@
 # Dati curati del replay 25/6 – 7/7/2025
 
-Status: ready-for-agent
+Status: done
 
 Preparare i file che non esistono come open data e vanno costruiti a mano, ciascuno con fonte per riga. I livelli HHWW arrivano dal downloader (ticket 02).
 
@@ -15,3 +15,7 @@ Preparare i file che non esistono come open data e vanno costruiti a mano, ciasc
 
 - Ogni riga ha fonte o la marcatura "inventata".
 - Ogni Segnalazione inventata cambia l'esito di almeno un passo, tranne quella non inerente.
+
+## Comments
+
+- 2026-10-03 15:10: File in `data/curati/` (vedi README lì).

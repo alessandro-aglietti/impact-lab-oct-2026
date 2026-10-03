@@ -1,0 +1,6 @@
+data_inizio,data_fine,rischio,livello,area,fonte
+2025-07-02,2025-07-03,temporali,gialla,nodo idraulico di Milano,https://www2.comune.milano.it/-/maltempo.-allerta-gialla-per-rischio-temporali-35
+2025-07-05,2025-07-05,idrogeologico,gialla,nodo idraulico di Milano,https://www.milanotoday.it/meteo/allerta-meteo-temporale-grandine-domenica-6-luglio.html
+2025-07-06,2025-07-06,temporali,arancione,nodo idraulico di Milano,https://www.milanotoday.it/meteo/allerta-meteo-temporale-grandine-domenica-6-luglio.html
+2025-07-07,2025-07-07,temporali,arancione,nodo idraulico di Milano,https://www2.comune.milano.it/-/maltempo.-ancora-allerta-arancione-per-rischio-temporali
+2025-07-08,2025-07-09,temporali,gialla,nodo idraulico di Milano,https://www2.comune.milano.it/-/maltempo.-ancora-allerta-arancione-per-rischio-temporali

@@ -1,0 +1,8 @@
+id,data,ID_NIL,NIL,testo,categoria,inerente,inventata,effetto_atteso
+S1,2025-06-27,57,SAN SIRO,"La casa di quartiere indicata come spazio fresco è chiusa: aria condizionata guasta fino a nuovo avviso.",spazio fresco,si,si,"Passo 2: San Siro sale di priorità, uno spazio fresco in meno nel NIL a rischio caldo più alto"
+S2,2025-06-27,20,LORETO - CASORETTO - NOLO,"Un residente over 80 segnala che il tram non sta passando da due giorni e non riesce a raggiungere la biblioteca aperta come spazio fresco.",accessibilità trasporto,si,si,"Passo 2: Iniziativa su accessibilità degli spazi freschi a Loreto (appiglio PUMS / Piano Caldo)"
+S3,2025-06-27,21,BUENOS AIRES - PORTA VENEZIA - PORTA MONFORTE,"Fontanella in piazza guasta, non esce acqua da ieri.",fontanella,si,si,"Passo 2: evidenza in più sul NIL 21, rischio caldo alto"
+S4,2025-06-27,26,XXII MARZO,"Buche sulla pista ciclabile di viale Piceno.",manutenzione strade,no,si,"Nessuno: non inerente, Ambrogio la ignora"
+S5,2025-07-02,25,CORSICA,"Il parco del quartiere chiude alle 14 per manutenzione del verde per tutta la settimana.",spazio fresco,si,si,"Passo 3: Segnale combinato caldo + temporali tiene conto di uno spazio fresco ridotto"
+S6,2025-07-06,14,NIGUARDA - CA' GRANDA - PRATO CENTENARO - Q.RE FULVIO TESTI,"Sottopasso allagato dopo il temporale della notte, passaggio chiuso.",allagamento,si,si,"Passo 4: conferma il rischio Seveso a Niguarda, Iniziativa per anziani soli nei NIL esondabili"
+S7,2025-07-07,31,MONLUE' - PONTE LAMBRO,"Acqua nelle cantine di alcune case popolari vicino al Lambro.",allagamento,si,si,"Passo 5: nuovo Segnale su Ponte Lambro mentre un Segnale scartato al passo precedente non viene riproposto"

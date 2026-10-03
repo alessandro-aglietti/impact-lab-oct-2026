@@ -1,6 +1,6 @@
 # Downloader dei dati del Comune e delle allerte
 
-Status: ready-for-agent
+Status: done
 
 Un downloader che scarica e versiona nel repo **solo** i dataset che servono ai data plugin (ticket 05). Base: `starter/portal.py` (helper CKAN), da rivedere e restringere.
 
@@ -31,3 +31,7 @@ Un downloader che scarica e versiona nel repo **solo** i dataset che servono ai 
 - Un comando riscarica tutto il perimetro.
 - Ogni file ha `ID_NIL` o una chiave documentata per arrivarci.
 - La demo non dipende dalla rete.
+
+## Comments
+
+- 2026-10-03 15:10: Workaround per le 16:00: `scripts/scarica_opendata.py` scarica in `data/opendata/` + `manifest.jsonl`. Anagrafica e confini NIL: `ds964-nil-vigenti-pgt-2030` (CSV + GeoJSON).
