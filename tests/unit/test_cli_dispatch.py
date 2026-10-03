@@ -18,3 +18,12 @@ def test_subcommand_without_func_is_a_usage_error(monkeypatch, capsys):
         cli.main(["orfano"])
     assert exc.value.code == 2
     assert "orfano" in capsys.readouterr().err
+
+
+def test_unknown_command_with_no_commands_registered_has_a_clear_message(capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["foo"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "choose from )" not in err
+    assert "foo" in err

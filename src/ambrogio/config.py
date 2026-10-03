@@ -2,6 +2,7 @@
 
 Every ticket reads paths and models from here instead of hard-coding them.
 """
+import functools
 import os
 import subprocess
 import warnings
@@ -11,7 +12,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 KEY_VAR = "ANTHROPIC_API_KEY"
-KEY_PLACEHOLDER = "sk-ant-..."  # value shipped in .env.example
+KEY_PREFIX = "sk-ant-"  # every real Anthropic API key starts with this
 
 
 def find_root(module_file: str | os.PathLike, env: Mapping[str, str]) -> Path:
@@ -44,8 +45,12 @@ DEFAULT_MODEL = "claude-sonnet-5-5"
 CHEAP_MODEL = "claude-haiku-4-5-20251001"
 
 
+@functools.cache
 def _main_checkout(root: Path) -> Path | None:
-    """The main checkout when `root` is in a git worktree (where the gitignored .env lives), else None."""
+    """The main checkout when `root` is in a git worktree (where the gitignored .env lives), else None.
+
+    Cached per root: model()/cheap_model() load .env on every call and the subprocess costs ~15 ms.
+    """
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--git-common-dir"],
@@ -81,7 +86,7 @@ def _is_set(name: str, value: str | None) -> bool:
     """A value counts as set unless it is blank or, for the API key, the .env.example placeholder."""
     if value is None or not value.strip():
         return False
-    return not (name == KEY_VAR and value.strip().startswith(KEY_PLACEHOLDER))
+    return name != KEY_VAR or api_key_problem(value) is None
 
 
 def load_env() -> None:
@@ -94,17 +99,30 @@ def load_env() -> None:
     for path in env_files():
         if not path.is_file():
             continue
-        for name, value in dotenv_values(path).items():
+        try:
+            values = dotenv_values(path)
+        except OSError as exc:  # e.g. mode 000: skip it, settings that need nothing from it still work
+            warnings.warn(f"cannot read {path}: {exc.strerror or exc}; skipped.", UserWarning, stacklevel=2)
+            continue
+        for name, value in values.items():
             if _is_set(name, value) and not _is_set(name, os.environ.get(name)):
                 os.environ[name] = value
 
 
 def api_key_problem(key: str | None) -> str | None:
-    """Why `key` is unusable (missing, blank, .env.example placeholder), or None if it looks usable."""
+    """Why `key` is unusable (missing, blank, a placeholder), or None if it looks usable.
+
+    A placeholder is anything that does not start with KEY_PREFIX ("your-key-here", "<paste key>") or that
+    contains an ellipsis ("sk-ant-...", "sk-ant-\u2026"): real keys have neither.
+    """
     if key is None or not key.strip():
         return f"{KEY_VAR} is not set: copy .env.example to .env and fill it in."
-    if key.strip().startswith(KEY_PLACEHOLDER):
-        return f"{KEY_VAR} is still the .env.example placeholder: put your real key in .env."
+    key = key.strip()
+    if not key.startswith(KEY_PREFIX) or "..." in key or "\u2026" in key:
+        return (
+            f"{KEY_VAR} looks like a placeholder, not a real key (it must start with {KEY_PREFIX!r}): "
+            "put your real key in .env."
+        )
     return None
 
 

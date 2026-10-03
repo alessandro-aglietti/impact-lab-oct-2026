@@ -12,7 +12,9 @@ KEY = "ANTHROPIC_API_KEY"
 
 
 def _git(*args, cwd):
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    """git with a throwaway identity and no signing, whatever the developer's global config says."""
+    ident = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+    subprocess.run(["git", *ident, *args], cwd=cwd, check=True, capture_output=True)
 
 
 ENV_VARS = (KEY, "CLAUDE_MODEL", "CLAUDE_CHEAP_MODEL")
@@ -27,6 +29,7 @@ def _isolate_env(mp: pytest.MonkeyPatch, cwd: Path) -> None:
         mp.setenv(name, "x")
         mp.delenv(name)
     mp.chdir(cwd)  # no stray .env in cwd
+    config._main_checkout.cache_clear()
 
 
 @pytest.fixture
@@ -39,7 +42,7 @@ def test_env_loaded_from_main_checkout_when_running_in_a_worktree(clean_env, tmp
     main = tmp_path / "main"
     main.mkdir()
     _git("init", "-q", cwd=main)
-    _git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x", cwd=main)
+    _git("commit", "-q", "--allow-empty", "-m", "x", cwd=main)
     (main / ".env").write_text(f"{KEY}=sk-ant-from-main\n")
     wt = tmp_path / "wt"
     _git("worktree", "add", "-q", "--detach", str(wt), cwd=main)
@@ -54,7 +57,7 @@ def test_worktree_env_wins_over_main_checkout(clean_env, tmp_path):
     main = tmp_path / "main"
     main.mkdir()
     _git("init", "-q", cwd=main)
-    _git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x", cwd=main)
+    _git("commit", "-q", "--allow-empty", "-m", "x", cwd=main)
     (main / ".env").write_text(f"{KEY}=sk-ant-from-main\n")
     wt = tmp_path / "wt"
     _git("worktree", "add", "-q", "--detach", str(wt), cwd=main)
@@ -129,7 +132,7 @@ def _worktree(tmp_path):
     main = tmp_path / "main"
     main.mkdir()
     _git("init", "-q", cwd=main)
-    _git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x", cwd=main)
+    _git("commit", "-q", "--allow-empty", "-m", "x", cwd=main)
     wt = tmp_path / "wt"
     _git("worktree", "add", "-q", "--detach", str(wt), cwd=main)
     return main, wt
@@ -209,3 +212,64 @@ def test_find_root_accepts_existing_ambrogio_root_silently(tmp_path):
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         assert config.find_root(Path(config.__file__), {"AMBROGIO_ROOT": str(tmp_path)}) == tmp_path.resolve()
+
+
+def test_worktree_helpers_survive_global_commit_signing(tmp_path, monkeypatch):
+    """A developer with commit.gpgsign=true globally must still be able to run these tests."""
+    gitconfig = tmp_path / "gitconfig"
+    gitconfig.write_text("[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = false\n")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(gitconfig))
+    main, wt = _worktree(tmp_path)
+    assert (wt / ".git").exists()
+
+
+def test_main_checkout_lookup_is_cached(clean_env, tmp_path, monkeypatch):
+    """model()/cheap_model() load .env on every call: the git subprocess must run once per root."""
+    calls = []
+    real_run = subprocess.run
+
+    def counting_run(*args, **kwargs):
+        calls.append(args)
+        return real_run(*args, **kwargs)
+
+    config._main_checkout.cache_clear()
+    monkeypatch.setattr(config.subprocess, "run", counting_run)
+    clean_env.setattr(config, "ROOT", tmp_path)
+    for _ in range(5):
+        config.cheap_model()
+        config.model()
+    assert len(calls) == 1
+
+
+def test_unreadable_env_file_is_skipped_with_warning(clean_env, tmp_path):
+    root = tmp_path / "r"
+    root.mkdir()
+    env = root / ".env"
+    env.write_text("CLAUDE_CHEAP_MODEL=x\n")
+    env.chmod(0)
+    try:
+        if os.access(env, os.R_OK):
+            pytest.skip("running as a user that can read mode-000 files")
+        clean_env.setattr(config, "ROOT", root)
+        with pytest.warns(UserWarning, match="cannot read"):
+            assert config.cheap_model() == config.CHEAP_MODEL
+    finally:
+        env.chmod(0o600)
+
+
+@pytest.mark.parametrize("value", ["sk-ant-…", "your-key-here", "sk-ant-xxx...", "<paste key>"])
+def test_placeholder_like_keys_are_rejected(clean_env, tmp_path, value):
+    assert config.api_key_problem(value)
+    clean_env.setattr(config, "ROOT", tmp_path)
+    clean_env.setenv(KEY, value)
+    with pytest.raises(RuntimeError, match=KEY):
+        config.client()
+
+
+def test_placeholder_like_key_in_worktree_env_does_not_hide_main_checkout_key(clean_env, tmp_path):
+    main, wt = _worktree(tmp_path)
+    (main / ".env").write_text(f"{KEY}=sk-ant-from-main\n")
+    (wt / ".env").write_text(f"{KEY}=your-key-here\n")
+    clean_env.setattr(config, "ROOT", wt)
+    config.load_env()
+    assert os.environ[KEY] == "sk-ant-from-main"

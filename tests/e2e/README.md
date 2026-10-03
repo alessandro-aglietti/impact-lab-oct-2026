@@ -15,6 +15,7 @@ Requirements: [uv](https://docs.astral.sh/uv/) (Python 3.11+ is fetched by uv if
 ```bash
 uv sync                                # creates .venv from uv.lock, dev group included
 uv run playwright install chromium     # browser for web UI scenarios, once per machine
+                                       # (Linux/CI: add --with-deps for the system libraries)
 cp .env.example .env                   # then set ANTHROPIC_API_KEY in .env
 uv run pytest                          # unit tests
 uv run pytest tests/e2e                # E2E scenarios
@@ -24,7 +25,7 @@ uv run pytest tests/e2e                # E2E scenarios
 
 | Variable | Required | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | yes | Read from `.env` in the working directory, the repo root or, inside a git worktree, the main checkout (`ambrogio.config.load_env`, first match wins). An exported non-blank value wins over `.env`; a blank one is ignored. Blank values and the `.env.example` placeholder count as unset, so they never hide a real key in a lower-priority `.env` (e.g. a worktree `.env` copied from `.env.example` does not hide the main checkout's key); if no real key is found the run fails with a clear message. `.env` is gitignored: never commit or print the key. Scenarios that need Claude **fail**, never skip, when it is missing. |
+| `ANTHROPIC_API_KEY` | yes | Read from `.env` in the working directory, the repo root or, inside a git worktree, the main checkout (`ambrogio.config.load_env`, first match wins). An exported non-blank value wins over `.env`; a blank one is ignored. Blank values and placeholders (a value not starting with `sk-ant-`, or containing `...` or `…`, e.g. the `.env.example` value) count as unset, so they never hide a real key in a lower-priority `.env` (e.g. a worktree `.env` copied from `.env.example` does not hide the main checkout's key); if no real key is found the run fails with a clear message. `.env` is gitignored: never commit or print the key. Scenarios that need Claude **fail**, never skip, when it is missing. |
 | `AMBROGIO_ROOT` | no | Repo root for data paths. Only needed with a non-editable install; otherwise the source tree (editable `uv sync`) or the working directory is used. **Export it; setting it in `.env` has no effect**, because it is read at import to find `.env` itself. A value that is not an existing directory is ignored with a warning. |
 | `CLAUDE_MODEL` | no | Main model, default `claude-sonnet-5-5`. Set it in `.env` or export it (`config.model()` loads `.env` itself); blank counts as unset. |
 | `CLAUDE_CHEAP_MODEL` | no | Cheap model for high-volume steps and the smoke scenario, default `claude-haiku-4-5-20251001`. Same rules as `CLAUDE_MODEL` (`config.cheap_model()`). |

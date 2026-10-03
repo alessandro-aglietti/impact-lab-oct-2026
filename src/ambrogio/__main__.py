@@ -18,6 +18,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
+    argv = sys.argv[1:] if argv is None else argv
+    commands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    positional = next((a for a in argv if not a.startswith("-")), None)
+    if not commands.choices and positional is not None:
+        parser.error(f"unknown command {positional!r}: no commands are available yet")
     args = parser.parse_args(argv)
     if args.command is None:
         parser.print_help()
