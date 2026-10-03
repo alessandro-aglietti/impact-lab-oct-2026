@@ -1,8 +1,11 @@
-"""API HTTP del replay per il portale del Decisore (ticket 07 e 09).
+"""API HTTP per il portale del Decisore (ticket 07 e 09).
 
 `uv run ambrogio serve` serve la pagina statica `src/ambrogio/web/` su `/` e l'API su `/api/`.
-Il `Replay` è iniettato: senza argomenti usa `DemoReplay` (Segnali fissi del replay);
+Il `Replay` è iniettato: senza argomenti usa `DemoReplay` (Segnali fissi dello scenario 2025);
 il ticket 09 inietta Ambrogio.
+
+Il `Periodo` decide le date dei passi: `Oggi` (default in produzione) analizza i dati alla data
+corrente, un passo per ogni analisi richiesta; `Scenario2025` ripercorre i cinque passi di `PASSI`.
 """
 
 from __future__ import annotations
@@ -10,13 +13,14 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import asdict
+from collections.abc import Callable
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock
 
 from ambrogio.config import ROOT
-from ambrogio.contracts import PASSI, Decisione, Replay, Segnale, StatoReplay
+from ambrogio.contracts import PASSI, Decisione, Passo, Replay, Segnale, StatoReplay
 
 WEB = Path(__file__).parent / "web"
 NIL_GEOJSON = ROOT / "data" / "opendata" / "ds964-nil-vigenti-pgt-2030.geojson"
@@ -29,30 +33,66 @@ class ErroreApi(Exception):
         self.codice = codice
 
 
-class ServizioReplay:
-    """Stato del replay condiviso fra le richieste."""
+class Scenario2025:
+    """I cinque passi fissi dell'estate 2025 (`contracts.PASSI`), con dati curati e Segnalazioni inventate."""
 
-    def __init__(self, replay: Replay):
+    nome = "2025"
+
+    def in_programma(self, eseguiti: int) -> list[Passo]:
+        return PASSI[eseguiti:]
+
+
+class Oggi:
+    """Produzione: ogni analisi è un passo nuovo datato oggi; l'elenco non finisce mai."""
+
+    nome = "oggi"
+
+    def __init__(self, oggi: Callable[[], date] = date.today):
+        self.oggi = oggi
+
+    def in_programma(self, eseguiti: int) -> list[Passo]:
+        return [Passo(eseguiti + 1, self.oggi())]
+
+
+Periodo = Scenario2025 | Oggi
+
+
+class ServizioReplay:
+    """Stato delle analisi condiviso fra le richieste."""
+
+    def __init__(self, replay: Replay, periodo: Periodo | None = None):
         self.replay = replay
+        self.periodo = periodo or Scenario2025()
         self.stato = StatoReplay()
+        self.eseguiti: list[Passo] = []
         self.lock = Lock()
 
+    def contesto(self) -> dict:
+        oggi = self.periodo.oggi() if isinstance(self.periodo, Oggi) else None
+        return {"periodo": self.periodo.nome, "oggi": oggi.isoformat() if oggi else None}
+
     def passi(self) -> list[dict]:
-        return [{"numero": p.numero, "data": p.data.isoformat(), "eseguito": p.numero <= self.stato.passo_corrente}
-                for p in PASSI]
+        eseguiti = [{"numero": p.numero, "data": p.data.isoformat(), "eseguito": True} for p in self.eseguiti]
+        return eseguiti + [{"numero": p.numero, "data": p.data.isoformat(), "eseguito": False}
+                           for p in self.periodo.in_programma(len(self.eseguiti))]
 
     def esegui(self, numero: int) -> dict:
         with self.lock:
             if numero != self.stato.passo_corrente + 1:
                 raise ErroreApi(409, f"il prossimo passo è {self.stato.passo_corrente + 1}")
-            if not 1 <= numero <= len(PASSI):
+            prossimi = self.periodo.in_programma(len(self.eseguiti))
+            if not prossimi:
                 raise ErroreApi(404, "passo inesistente")
-            segnali = self.replay.esegui_passo(PASSI[numero - 1], list(self.stato.decisioni))
+            passo = prossimi[0]
+            segnali = self.replay.esegui_passo(passo, list(self.stato.decisioni))
+            self.eseguiti.append(passo)
             for s in segnali:
                 self.stato.segnali[s.id] = s
             self.stato.passo_corrente = numero
             extra = getattr(self.replay, "note_passo", lambda n: {})(numero)
-            scartati = [asdict(d) for d in self.stato.decisioni if d.esito == "scartato"]
+            come = extra.get("scartati_considerati", {})
+            scartati = [asdict(d) | {"come": come.get(d.segnale_id)}
+                        for d in self.stato.decisioni if d.esito == "scartato"]
             return {"passo": numero, "segnali": [_json(s) for s in segnali],
                     "segnalazioni_ignorate": extra.get("segnalazioni_ignorate", []),
                     "scarti_considerati": scartati}
@@ -66,7 +106,7 @@ class ServizioReplay:
             if s is None:
                 raise ErroreApi(404, "Segnale inesistente")
             if s.passo != self.stato.passo_corrente:
-                raise ErroreApi(409, "decisione chiusa: il replay è già avanzato")
+                raise ErroreApi(409, "decisione chiusa: è già partita l'analisi successiva")
             esito = corpo.get("esito")
             motivo = (corpo.get("motivo") or "").strip()
             if esito not in ("approvato", "scartato", None):
@@ -107,6 +147,8 @@ def crea_handler(servizio: ServizioReplay) -> type[BaseHTTPRequestHandler]:
 
         def do_GET(self) -> None:
             path = self.path.split("?")[0]
+            if path == "/api/contesto":
+                return self._json(200, servizio.contesto())
             if path == "/api/passi":
                 return self._json(200, servizio.passi())
             if path == "/api/segnali":
@@ -142,27 +184,34 @@ def crea_handler(servizio: ServizioReplay) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def crea_replay(modo: str = "auto") -> tuple[Replay, str]:
-    """Sceglie il Replay. Il ticket 09 fornisce `ambrogio.cablaggio.crea_replay() -> Replay` (Ambrogio su Claude)."""
+def crea_replay(modo: str = "auto", periodo: str = "2025") -> tuple[Replay, str]:
+    """Sceglie il Replay. Il ticket 09 fornisce `ambrogio.cablaggio.crea_replay() -> Replay` (Ambrogio su Claude).
+
+    Con il periodo "oggi" serve Claude: i Segnali fissi del demo valgono solo per lo scenario 2025, e in
+    produzione le Segnalazioni inventate non entrano.
+    """
+    if periodo == "oggi" and modo == "demo":
+        raise SystemExit("il replay demo vale solo per lo scenario 2025 (--periodo 2025)")
     if modo in ("auto", "ambrogio"):
         try:
             from ambrogio import cablaggio
             from ambrogio.config import load_env
 
             load_env()
-            return cablaggio.crea_replay(), "ambrogio"
+            return cablaggio.crea_replay(inventate=periodo == "2025"), "ambrogio"
         except Exception as e:  # noqa: BLE001
-            if modo == "ambrogio":
-                raise SystemExit(f"replay ambrogio non disponibile: {e}") from e
+            if modo == "ambrogio" or periodo == "oggi":
+                raise SystemExit(f"Ambrogio su Claude non disponibile: {e}") from e
             print(f"replay ambrogio non disponibile ({e}): uso il replay demo")
     from ambrogio.demo_replay import DemoReplay
 
     return DemoReplay(), "demo"
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000, replay: Replay | None = None) -> ThreadingHTTPServer:
+def serve(host: str = "127.0.0.1", port: int = 8000, replay: Replay | None = None,
+          periodo: Periodo | None = None) -> ThreadingHTTPServer:
     if replay is None:
         from ambrogio.demo_replay import DemoReplay
 
         replay = DemoReplay()
-    return ThreadingHTTPServer((host, port), crea_handler(ServizioReplay(replay)))
+    return ThreadingHTTPServer((host, port), crea_handler(ServizioReplay(replay, periodo)))
